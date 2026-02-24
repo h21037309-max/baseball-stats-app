@@ -21,7 +21,9 @@ users={
 
 "陳志豪":"2222",
 
-"邱珈琪":"0000"
+"邱珈琪":"0000",
+
+"黃李孟蓁":"1109"
 
 }
 
@@ -36,7 +38,7 @@ type="password"
 
 if username not in users or users[username]!=password:
 
-    st.warning("王八蛋")
+    st.warning("左上角按鍵登錄")
 
     st.stop()
 

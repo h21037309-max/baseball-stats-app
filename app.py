@@ -9,16 +9,32 @@ st.title("⚾ 棒球打擊數據系統")
 
 FILE="data.csv"
 
-# ===== CSV讀取 =====
+# ===== 讀取CSV =====
 
 if os.path.exists(FILE):
     df=pd.read_csv(FILE)
 else:
-    df=pd.DataFrame()
+    df=pd.DataFrame(columns=[
 
-# ===== 新增紀錄 =====
+"日期","球隊","背號","姓名",
 
-st.header("新增比賽紀錄")
+"打席","打數","得分","打點",
+
+"安打",
+
+"1B","2B","3B","HR",
+
+"長打數",
+
+"BB","SF","SH","SB",
+
+"AVG","OBP","SLG","OPS"
+
+])
+
+# ===== 新增資料 =====
+
+st.header("新增 / 累積球員紀錄")
 
 col1,col2,col3=st.columns(3)
 
@@ -26,16 +42,9 @@ with col1:
 
     team=st.text_input("球隊")
 
-    opponent=st.text_input("對戰球隊")
-
     number=st.number_input("背號",0)
 
     name=st.text_input("姓名")
-
-    pitcher=st.selectbox(
-    "投手",
-    ["左投","右投"]
-    )
 
 with col2:
 
@@ -51,53 +60,84 @@ with col2:
 
 with col3:
 
-    single=st.number_input("一壘安打",0)
+    single=st.number_input("1B",0)
 
-    double=st.number_input("二壘安打",0)
+    double=st.number_input("2B",0)
 
-    triple=st.number_input("三壘安打",0)
+    triple=st.number_input("3B",0)
 
-    HR=st.number_input("全壘打",0)
+    HR=st.number_input("HR",0)
 
-    BB=st.number_input("四壞",0)
+    BB=st.number_input("BB",0)
 
-    SF=st.number_input("高飛犧牲打",0)
+    SF=st.number_input("SF",0)
 
-    SH=st.number_input("犧牲短打",0)
+    SH=st.number_input("SH",0)
 
-    SB=st.number_input("盜壘",0)
+    SB=st.number_input("SB",0)
 
-# ===== 新增 =====
+# ===== 新增或累積 =====
 
-if st.button("新增紀錄"):
+if st.button("新增或累積"):
 
-    date=datetime.now()
+    today=datetime.now().strftime("%Y-%m-%d")
 
     XB=double+triple+HR
+
+    TB=single+double*2+triple*3+HR*4
 
     AVG=round(H/AB,3) if AB>0 else 0
 
     OBP=round((H+BB)/(AB+BB+SF),3) if (AB+BB+SF)>0 else 0
 
-    TB=single+double*2+triple*3+HR*4
-
     SLG=round(TB/AB,3) if AB>0 else 0
 
     OPS=round(OBP+SLG,3)
 
-    new=pd.DataFrame([{
+    # 找是否存在球員
+    existing=(
+        (df["球隊"]==team)&
+        (df["背號"]==number)&
+        (df["姓名"]==name)
+    )
 
-"日期":date,
+    if existing.any():
+
+        idx=df[existing].index[0]
+
+        df.loc[idx,"日期"]=today
+
+        df.loc[idx,"打席"]+=PA
+        df.loc[idx,"打數"]+=AB
+        df.loc[idx,"得分"]+=R
+        df.loc[idx,"打點"]+=RBI
+
+        df.loc[idx,"安打"]+=H
+
+        df.loc[idx,"1B"]+=single
+        df.loc[idx,"2B"]+=double
+        df.loc[idx,"3B"]+=triple
+        df.loc[idx,"HR"]+=HR
+
+        df.loc[idx,"BB"]+=BB
+        df.loc[idx,"SF"]+=SF
+        df.loc[idx,"SH"]+=SH
+        df.loc[idx,"SB"]+=SB
+
+    else:
+
+        new=pd.DataFrame([{
+
+"日期":today,
 "球隊":team,
-"對戰球隊":opponent,
 "背號":number,
 "姓名":name,
-"投手":pitcher,
 
 "打席":PA,
 "打數":AB,
 "得分":R,
 "打點":RBI,
+
 "安打":H,
 
 "1B":single,
@@ -110,38 +150,46 @@ if st.button("新增紀錄"):
 "BB":BB,
 "SF":SF,
 "SH":SH,
-
-"SB":SB,
-
-"AVG":AVG,
-"OBP":OBP,
-"SLG":SLG,
-"OPS":OPS
+"SB":SB
 
 }])
 
-    df=pd.concat([df,new],ignore_index=True)
+        df=pd.concat([df,new],ignore_index=True)
+
+    # ===== 全部重新計算 =====
+
+    df["長打數"]=df["2B"]+df["3B"]+df["HR"]
+
+    TB=df["1B"]+df["2B"]*2+df["3B"]*3+df["HR"]*4
+
+    df["AVG"]=df.apply(
+    lambda r:round(r["安打"]/r["打數"],3)
+    if r["打數"]>0 else 0,axis=1)
+
+    df["OBP"]=df.apply(
+    lambda r:round(
+    (r["安打"]+r["BB"])/
+    (r["打數"]+r["BB"]+r["SF"]),3)
+    if (r["打數"]+r["BB"]+r["SF"])>0 else 0,
+    axis=1)
+
+    df["SLG"]=df.apply(
+    lambda r:round(
+    (r["1B"]+r["2B"]*2+r["3B"]*3+r["HR"]*4)/
+    r["打數"],3)
+    if r["打數"]>0 else 0,
+    axis=1)
+
+    df["OPS"]=df["OBP"]+df["SLG"]
 
     df.to_csv(FILE,index=False)
 
-    st.success("已儲存")
+    st.success("已更新")
 
-# ===== 顯示資料 =====
+# ===== 顯示 =====
 
-st.header("全部比賽紀錄")
+st.header("球員累積紀錄")
 
-if not df.empty:
-
-    st.dataframe(df,use_container_width=True)
-
-# ===== 左投右投分析 =====
-
-st.header("左投 vs 右投 OPS")
-
-if not df.empty:
-
-    analysis=df.groupby(
-        ["姓名","投手"]
-    )[["打席","安打"]].sum().reset_index()
-
-    st.dataframe(analysis,use_container_width=True)
+st.dataframe(
+df.sort_values("OPS",ascending=False),
+use_container_width=True)

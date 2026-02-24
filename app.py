@@ -9,7 +9,9 @@ st.title("⚾ 棒球打擊數據系統")
 
 FILE="data.csv"
 
-# ========= 登入 =========
+# =====================
+# 登入
+# =====================
 
 st.sidebar.title("登入")
 
@@ -42,7 +44,9 @@ if username not in users or users[username]!=password:
 
     st.stop()
 
-# ========= 欄位 =========
+# =====================
+# 欄位
+# =====================
 
 columns=[
 
@@ -58,7 +62,9 @@ columns=[
 
 ]
 
-# ========= CSV（超穩定）=========
+# =====================
+# CSV
+# =====================
 
 if os.path.exists(FILE):
 
@@ -68,17 +74,98 @@ else:
 
     df=pd.DataFrame(columns=columns)
 
-# ⭐ 自動補缺少欄位（超重要）
+# 補欄位
 for col in columns:
 
     if col not in df.columns:
 
         df[col]=0
 
-# ⭐ NaN 修正
 df=df.fillna(0)
 
-# ========= 基本資料 =========
+# =====================
+# ADMIN 後台總覽
+# =====================
+
+if username==ADMIN and not df.empty:
+
+    st.header("🏆 後台：全部球員排行榜")
+
+    summary=df.groupby(
+
+["球隊","背號","姓名"],
+
+as_index=False
+
+).sum(numeric_only=True)
+
+    TB=(
+summary["1B"]
++summary["2B"]*2
++summary["3B"]*3
++summary["HR"]*4
+)
+
+    summary["AVG"]=summary.apply(
+
+lambda r:round(r["安打"]/r["打數"],3)
+
+if r["打數"]>0 else 0,
+
+axis=1)
+
+    summary["OBP"]=summary.apply(
+
+lambda r:round(
+
+(r["安打"]+r["BB"])/
+(r["打數"]+r["BB"]+r["SF"])
+
+,3)
+
+if (r["打數"]+r["BB"]+r["SF"])>0 else 0,
+
+axis=1)
+
+    summary["SLG"]=summary.apply(
+
+lambda r:round(
+
+(r["1B"]+r["2B"]*2+r["3B"]*3+r["HR"]*4)/
+r["打數"]
+
+,3)
+
+if r["打數"]>0 else 0,
+
+axis=1)
+
+    summary["OPS"]=(
+
+summary["OBP"]+
+summary["SLG"]
+
+).round(3)
+
+    st.dataframe(
+
+summary[
+
+["球隊","背號","姓名",
+
+"打席","打數","安打",
+
+"AVG","OPS"]
+
+].sort_values("OPS",ascending=False),
+
+use_container_width=True
+
+)
+
+# =====================
+# 基本資料
+# =====================
 
 st.header("球員基本資料")
 
@@ -102,7 +189,9 @@ else:
 
     st.write(f"球員：{name}")
 
-# ========= 新增 =========
+# =====================
+# 新增比賽
+# =====================
 
 st.header("新增比賽紀錄")
 
@@ -113,9 +202,12 @@ with c1:
     opponent=st.text_input("對戰球隊")
 
     pitcher=st.selectbox(
-        "投手",
-        ["左投","右投"]
-    )
+
+"投手",
+
+["左投","右投"]
+
+)
 
 with c2:
 
@@ -147,7 +239,9 @@ with c3:
 
     SB=st.number_input("SB",0)
 
-# ========= 新增 =========
+# =====================
+# 新增
+# =====================
 
 if st.button("新增紀錄"):
 
@@ -187,7 +281,9 @@ if st.button("新增紀錄"):
 
     st.success("新增成功")
 
-# ========= 顯示 =========
+# =====================
+# 顯示紀錄
+# =====================
 
 st.header("比賽紀錄")
 
@@ -203,8 +299,6 @@ if not df.empty:
 
     total=player_df.sum(numeric_only=True)
 
-    total=total.fillna(0)
-
     TB=(
 total["1B"]
 +total["2B"]*2
@@ -219,8 +313,10 @@ total["1B"]
     AVG=round(H_total/AB_total,3) if AB_total>0 else 0
 
     OBP=round(
+
 (H_total+total["BB"])/
 (AB_total+total["BB"]+total["SF"])
+
 ,3) if (AB_total+total["BB"]+total["SF"])>0 else 0
 
     SLG=round(TB/AB_total,3) if AB_total>0 else 0
@@ -245,24 +341,35 @@ total["1B"]
 
     for idx,row in show_df.iterrows():
 
-        col1,col2=st.columns([8,1])
+        with st.container():
 
-        with col1:
+            colA,colB=st.columns([9,1])
 
-            st.write(
+            with colA:
 
-f"{row['日期']} | {row['對戰球隊']} | {row['投手']} | AB:{row['打數']} H:{row['安打']}"
+                st.markdown(f"""
 
-            )
+### 📅 {row['日期']} ｜ {row['球隊']} #{int(row['背號'])} {row['姓名']}
 
-        with col2:
+vs {row['對戰球隊']} ｜ {row['投手']}
 
-            if st.button("❌",key=f"del{idx}"):
+PA {int(row['打席'])} ｜ AB {int(row['打數'])} ｜ H {int(row['安打'])} ｜ RBI {int(row['打點'])} ｜ R {int(row['得分'])}
 
-                df=df.drop(idx)
+1B {int(row['1B'])} ｜ 2B {int(row['2B'])} ｜ 3B {int(row['3B'])} ｜ HR {int(row['HR'])}
 
-                df.to_csv(FILE,index=False)
+BB {int(row['BB'])} ｜ SF {int(row['SF'])} ｜ SH {int(row['SH'])} ｜ SB {int(row['SB'])}
 
-                st.success("已刪除")
+---
+""")
 
-                st.rerun()
+            with colB:
+
+                if st.button("❌",key=f"del{idx}"):
+
+                    df=df.drop(idx)
+
+                    df.to_csv(FILE,index=False)
+
+                    st.success("已刪除")
+
+                    st.rerun()

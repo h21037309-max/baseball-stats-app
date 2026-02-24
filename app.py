@@ -3,144 +3,153 @@ import pandas as pd
 from datetime import datetime
 import os
 
-FILE="records.csv"
+st.set_page_config(layout="wide")
 
 st.title("⚾ 棒球打擊數據系統")
 
-# ========= 讀取 =========
+FILE="data.csv"
+
+# ===== 預設欄位 =====
+
+columns=[
+
+"日期","球隊","對戰球隊","背號","姓名","投手",
+
+"打席","打數","得分","打點","安打",
+
+"1B","2B","3B","HR",
+
+"長打數",
+
+"BB","SF","SH","SB",
+
+"AVG","OBP","SLG","OPS"
+
+]
+
+# ===== CSV讀取 =====
 
 if os.path.exists(FILE):
-    records=pd.read_csv(FILE)
+
+    df=pd.read_csv(FILE)
+
 else:
-    records=pd.DataFrame(columns=[
-"日期","球隊","背號","姓名",
-"打數","安打","1B","2B","3B","HR",
-"BB","SF"
-])
 
-# ========= 新增 =========
+    df=pd.DataFrame(columns=columns)
 
-st.header("新增紀錄")
+# ===== 新增紀錄 =====
 
-team=st.text_input("球隊")
+st.header("新增比賽紀錄")
 
-number=st.number_input("背號",0)
+col1,col2,col3=st.columns(3)
 
-name=st.text_input("姓名")
+with col1:
 
-AB=st.number_input("打數",0)
+    team=st.text_input("球隊")
 
-H=st.number_input("安打",0)
+    opponent=st.text_input("對戰球隊")
 
-single=st.number_input("1B",0)
+    number=st.number_input("背號",0)
 
-double=st.number_input("2B",0)
+    name=st.text_input("姓名")
 
-triple=st.number_input("3B",0)
+    pitcher=st.selectbox(
+        "投手",
+        ["左投","右投"]
+    )
 
-HR=st.number_input("HR",0)
+with col2:
 
-BB=st.number_input("BB",0)
+    PA=st.number_input("打席",0)
 
-SF=st.number_input("SF",0)
+    AB=st.number_input("打數",0)
 
-if st.button("新增"):
+    R=st.number_input("得分",0)
 
-    today=datetime.now().strftime("%Y-%m-%d")
+    RBI=st.number_input("打點",0)
+
+    H=st.number_input("安打",0)
+
+with col3:
+
+    single=st.number_input("一壘安打",0)
+
+    double=st.number_input("二壘安打",0)
+
+    triple=st.number_input("三壘安打",0)
+
+    HR=st.number_input("全壘打",0)
+
+    BB=st.number_input("四壞",0)
+
+    SF=st.number_input("高飛犧牲打",0)
+
+    SH=st.number_input("犧牲短打",0)
+
+    SB=st.number_input("盜壘",0)
+
+# ===== 新增 =====
+
+if st.button("新增紀錄"):
+
+    date=datetime.now().strftime("%Y-%m-%d")
+
+    XB=double+triple+HR
+
+    AVG=round(H/AB,3) if AB>0 else 0
+
+    OBP=round((H+BB)/(AB+BB+SF),3) if (AB+BB+SF)>0 else 0
+
+    TB=single+double*2+triple*3+HR*4
+
+    SLG=round(TB/AB,3) if AB>0 else 0
+
+    OPS=round(OBP+SLG,3)
 
     new=pd.DataFrame([{
 
-"日期":today,
+"日期":date,
 "球隊":team,
+"對戰球隊":opponent,
 "背號":number,
 "姓名":name,
+"投手":pitcher,
+
+"打席":PA,
 "打數":AB,
+"得分":R,
+"打點":RBI,
 "安打":H,
+
 "1B":single,
 "2B":double,
 "3B":triple,
 "HR":HR,
+
+"長打數":XB,
+
 "BB":BB,
-"SF":SF
+"SF":SF,
+"SH":SH,
+"SB":SB,
+
+"AVG":AVG,
+"OBP":OBP,
+"SLG":SLG,
+"OPS":OPS
 
 }])
 
-    records=pd.concat(
-        [records,new],
-        ignore_index=True)
+    df=pd.concat([df,new],ignore_index=True)
 
-    records.to_csv(FILE,index=False)
+    df.to_csv(FILE,index=False)
 
-    st.success("新增成功")
+    st.success("已儲存")
 
-# ========= 累積 =========
+# ===== 顯示資料 =====
 
-st.header("球員累積成績")
+st.header("全部比賽紀錄")
 
-if not records.empty:
+if not df.empty:
 
-    summary=records.groupby(
-["球隊","背號","姓名"],
-as_index=False).sum(numeric_only=True)
-
-    # AVG
-    summary["AVG"]=summary.apply(
-lambda r:round(r["安打"]/r["打數"],3)
-if r["打數"]>0 else 0,
-axis=1)
-
-    # SLG
-    TB=(
-summary["1B"]
-+summary["2B"]*2
-+summary["3B"]*3
-+summary["HR"]*4
-)
-
-    summary["SLG"]=(TB/
-summary["打數"].replace(0,1)).round(3)
-
-    # OBP
-    denominator=(
-summary["打數"]
-+summary["BB"]
-+summary["SF"]
-).replace(0,1)
-
-    summary["OBP"]=(
-summary["安打"]
-+summary["BB"]
-)/denominator
-
-    summary["OBP"]=summary["OBP"].round(3)
-
-    # OPS
-    summary["OPS"]=(
-summary["OBP"]+
-summary["SLG"]
-).round(3)
-
-    st.dataframe(
-summary.sort_values("OPS",ascending=False),
-use_container_width=True)
-
-# ========= 原始紀錄 =========
-
-st.header("原始紀錄（單筆刪除）")
-
-if not records.empty:
-
-    st.dataframe(records,use_container_width=True)
-
-    delete_index=st.selectbox(
-"選擇刪除紀錄（依序號）",
-records.index
-)
-
-    if st.button("刪除選定紀錄"):
-
-        records=records.drop(delete_index)
-
-        records.to_csv(FILE,index=False)
-
-        st.success("已刪除")
+    st.dataframe(df,use_container_width=True)

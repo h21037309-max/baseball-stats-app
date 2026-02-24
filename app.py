@@ -5,7 +5,7 @@ import os
 
 st.set_page_config(layout="wide")
 
-st.title("⚾ 棒球打擊數據庫")
+st.title("⚾ 棒球打擊數據系統")
 
 FILE="data.csv"
 
@@ -58,7 +58,7 @@ columns=[
 
 ]
 
-# ========= CSV =========
+# ========= CSV（超穩定）=========
 
 if os.path.exists(FILE):
 
@@ -67,6 +67,16 @@ if os.path.exists(FILE):
 else:
 
     df=pd.DataFrame(columns=columns)
+
+# ⭐ 自動補缺少欄位（超重要）
+for col in columns:
+
+    if col not in df.columns:
+
+        df[col]=0
+
+# ⭐ NaN 修正
+df=df.fillna(0)
 
 # ========= 基本資料 =========
 
@@ -92,7 +102,7 @@ else:
 
     st.write(f"球員：{name}")
 
-# ========= 新增比賽 =========
+# ========= 新增 =========
 
 st.header("新增比賽紀錄")
 
@@ -191,17 +201,15 @@ if not df.empty:
 
         player_df=df[df["姓名"]==username]
 
-    # ===== Excel加總 =====
-
     total=player_df.sum(numeric_only=True)
 
-    TB=(
+    total=total.fillna(0)
 
+    TB=(
 total["1B"]
 +total["2B"]*2
 +total["3B"]*3
 +total["HR"]*4
-
 )
 
     AB_total=total["打數"]
@@ -230,8 +238,6 @@ total["1B"]
     m3.metric("AVG",AVG)
 
     m4.metric("OPS",OPS)
-
-    # ===== 表格 =====
 
     st.subheader("每場紀錄")
 

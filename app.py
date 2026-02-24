@@ -34,7 +34,7 @@ type="password"
 
 if username not in users or users[username]!=password:
 
-    st.warning("請先登入")
+    st.warning("王八蛋")
 
     st.stop()
 

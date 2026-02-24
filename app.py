@@ -25,6 +25,9 @@ users={
 
 }
 
+# ⭐ 管理員帳號
+ADMIN="洪仲平"
+
 username=st.sidebar.text_input("帳號")
 
 password=st.sidebar.text_input(
@@ -71,10 +74,10 @@ else:
     df=pd.DataFrame(columns=columns)
 
 # =====================
-# 新增累積（只有admin）
+# ADMIN新增累積
 # =====================
 
-if username=="admin":
+if username==ADMIN:
 
     st.header("新增或累積紀錄")
 
@@ -124,11 +127,11 @@ if username=="admin":
 
         existing=(
 
-            (df["球隊"]==team)&
-            (df["背號"]==number)&
-            (df["姓名"]==name)
+(df["球隊"]==team)&
+(df["背號"]==number)&
+(df["姓名"]==name)
 
-        )
+)
 
         if existing.any():
 
@@ -187,24 +190,37 @@ if username=="admin":
         df["長打數"]=df["2B"]+df["3B"]+df["HR"]
 
         df["AVG"]=df.apply(
+
 lambda r:round(r["安打"]/r["打數"],3)
+
 if r["打數"]>0 else 0,
+
 axis=1)
 
         df["OBP"]=df.apply(
+
 lambda r:round(
+
 (r["安打"]+r["BB"])/
 (r["打數"]+r["BB"]+r["SF"])
+
 ,3)
+
 if (r["打數"]+r["BB"]+r["SF"])>0 else 0,
+
 axis=1)
 
         df["SLG"]=df.apply(
+
 lambda r:round(
+
 (r["1B"]+r["2B"]*2+r["3B"]*3+r["HR"]*4)/
 r["打數"]
+
 ,3)
+
 if r["打數"]>0 else 0,
+
 axis=1)
 
         df["OPS"]=(df["OBP"]+df["SLG"]).round(3)
@@ -221,7 +237,7 @@ st.header("球員成績")
 
 if not df.empty:
 
-    if username=="admin":
+    if username==ADMIN:
 
         show_df=df
 
@@ -231,17 +247,17 @@ if not df.empty:
 
     st.dataframe(
 
-        show_df.sort_values("OPS",ascending=False),
+show_df.sort_values("OPS",ascending=False),
 
-        use_container_width=True
+use_container_width=True
 
-    )
+)
 
 # =====================
-# ADMIN 刪除
+# ADMIN刪除
 # =====================
 
-if username=="admin":
+if username==ADMIN and not df.empty:
 
     st.header("單筆刪除球員")
 
@@ -255,11 +271,11 @@ axis=1
 
     selected=st.selectbox(
 
-        "選擇刪除球員",
+"選擇刪除球員",
 
-        options
+options
 
-    )
+)
 
     if st.button("❌ 刪除此球員"):
 

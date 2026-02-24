@@ -5,7 +5,7 @@ import os
 
 st.set_page_config(layout="wide")
 
-st.title("⚾ 校隊棒球打擊數據系統")
+st.title("⚾ 棒球打擊數據系統")
 
 FILE="data.csv"
 

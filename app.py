@@ -211,6 +211,40 @@ st.header("球員累積成績")
 
 if not df.empty:
 
+    show_df=df.sort_values("OPS",ascending=False)
+
     st.dataframe(
-df.sort_values("OPS",ascending=False),
-use_container_width=True)
+        show_df,
+        use_container_width=True
+    )
+
+# =====================
+# 單筆刪除功能
+# =====================
+
+st.header("單筆刪除球員")
+
+if not df.empty:
+
+    # 下拉選球員（不會刪錯）
+    options=df.apply(
+        lambda r:f"{r['球隊']} - #{int(r['背號'])} {r['姓名']}",
+        axis=1
+    )
+
+    selected=st.selectbox(
+        "選擇要刪除的球員",
+        options
+    )
+
+    if st.button("❌ 刪除此球員"):
+
+        delete_index=options[options==selected].index[0]
+
+        df=df.drop(delete_index)
+
+        df.to_csv(FILE,index=False)
+
+        st.success("已刪除")
+
+        st.rerun()

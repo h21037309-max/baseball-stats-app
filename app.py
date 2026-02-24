@@ -9,9 +9,7 @@ st.title("⚾ 棒球打擊數據系統")
 
 FILE="data.csv"
 
-# =====================
-# 登入系統
-# =====================
+# ========= 登入 =========
 
 st.sidebar.title("登入")
 
@@ -25,7 +23,6 @@ users={
 
 }
 
-# ⭐ 管理員帳號
 ADMIN="洪仲平"
 
 username=st.sidebar.text_input("帳號")
@@ -41,9 +38,7 @@ if username not in users or users[username]!=password:
 
     st.stop()
 
-# =====================
-# 欄位
-# =====================
+# ========= 欄位 =========
 
 columns=[
 
@@ -61,9 +56,7 @@ columns=[
 
 ]
 
-# =====================
-# CSV讀取
-# =====================
+# ========= CSV =========
 
 if os.path.exists(FILE):
 
@@ -73,59 +66,63 @@ else:
 
     df=pd.DataFrame(columns=columns)
 
-# =====================
-# ADMIN新增累積
-# =====================
+# ========= 新增 =========
 
-if username==ADMIN:
+st.header("新增或累積紀錄")
 
-    st.header("新增或累積紀錄")
+col1,col2,col3=st.columns(3)
 
-    col1,col2,col3=st.columns(3)
+with col1:
 
-    with col1:
+    team=st.text_input("球隊")
 
-        team=st.text_input("球隊")
+    number=st.number_input("背號",0)
 
-        number=st.number_input("背號",0)
+    if username==ADMIN:
 
         name=st.text_input("姓名")
 
-    with col2:
+    else:
 
-        PA=st.number_input("打席",0)
+        name=username
 
-        AB=st.number_input("打數",0)
+        st.write(f"球員：{name}")
 
-        R=st.number_input("得分",0)
+with col2:
 
-        RBI=st.number_input("打點",0)
+    PA=st.number_input("打席",0)
 
-        H=st.number_input("安打",0)
+    AB=st.number_input("打數",0)
 
-    with col3:
+    R=st.number_input("得分",0)
 
-        single=st.number_input("1B",0)
+    RBI=st.number_input("打點",0)
 
-        double=st.number_input("2B",0)
+    H=st.number_input("安打",0)
 
-        triple=st.number_input("3B",0)
+with col3:
 
-        HR=st.number_input("HR",0)
+    single=st.number_input("1B",0)
 
-        BB=st.number_input("BB",0)
+    double=st.number_input("2B",0)
 
-        SF=st.number_input("SF",0)
+    triple=st.number_input("3B",0)
 
-        SH=st.number_input("SH",0)
+    HR=st.number_input("HR",0)
 
-        SB=st.number_input("SB",0)
+    BB=st.number_input("BB",0)
 
-    if st.button("新增或累積"):
+    SF=st.number_input("SF",0)
 
-        today=datetime.now().strftime("%Y-%m-%d")
+    SH=st.number_input("SH",0)
 
-        existing=(
+    SB=st.number_input("SB",0)
+
+if st.button("新增或累積"):
+
+    today=datetime.now().strftime("%Y-%m-%d")
+
+    existing=(
 
 (df["球隊"]==team)&
 (df["背號"]==number)&
@@ -133,32 +130,32 @@ if username==ADMIN:
 
 )
 
-        if existing.any():
+    if existing.any():
 
-            idx=df[existing].index[0]
+        idx=df[existing].index[0]
 
-            df.loc[idx,"日期"]=today
+        df.loc[idx,"日期"]=today
 
-            df.loc[idx,"打席"]+=PA
-            df.loc[idx,"打數"]+=AB
-            df.loc[idx,"得分"]+=R
-            df.loc[idx,"打點"]+=RBI
+        df.loc[idx,"打席"]+=PA
+        df.loc[idx,"打數"]+=AB
+        df.loc[idx,"得分"]+=R
+        df.loc[idx,"打點"]+=RBI
 
-            df.loc[idx,"安打"]+=H
+        df.loc[idx,"安打"]+=H
 
-            df.loc[idx,"1B"]+=single
-            df.loc[idx,"2B"]+=double
-            df.loc[idx,"3B"]+=triple
-            df.loc[idx,"HR"]+=HR
+        df.loc[idx,"1B"]+=single
+        df.loc[idx,"2B"]+=double
+        df.loc[idx,"3B"]+=triple
+        df.loc[idx,"HR"]+=HR
 
-            df.loc[idx,"BB"]+=BB
-            df.loc[idx,"SF"]+=SF
-            df.loc[idx,"SH"]+=SH
-            df.loc[idx,"SB"]+=SB
+        df.loc[idx,"BB"]+=BB
+        df.loc[idx,"SF"]+=SF
+        df.loc[idx,"SH"]+=SH
+        df.loc[idx,"SB"]+=SB
 
-        else:
+    else:
 
-            new=pd.DataFrame([{
+        new=pd.DataFrame([{
 
 "日期":today,
 "球隊":team,
@@ -183,55 +180,40 @@ if username==ADMIN:
 
 }])
 
-            df=pd.concat([df,new],ignore_index=True)
+        df=pd.concat([df,new],ignore_index=True)
 
-        # ===== 重算 =====
+    # ===== 重算 =====
 
-        df["長打數"]=df["2B"]+df["3B"]+df["HR"]
+    df["長打數"]=df["2B"]+df["3B"]+df["HR"]
 
-        df["AVG"]=df.apply(
-
+    df["AVG"]=df.apply(
 lambda r:round(r["安打"]/r["打數"],3)
-
 if r["打數"]>0 else 0,
-
 axis=1)
 
-        df["OBP"]=df.apply(
-
+    df["OBP"]=df.apply(
 lambda r:round(
-
 (r["安打"]+r["BB"])/
 (r["打數"]+r["BB"]+r["SF"])
-
 ,3)
-
 if (r["打數"]+r["BB"]+r["SF"])>0 else 0,
-
 axis=1)
 
-        df["SLG"]=df.apply(
-
+    df["SLG"]=df.apply(
 lambda r:round(
-
 (r["1B"]+r["2B"]*2+r["3B"]*3+r["HR"]*4)/
 r["打數"]
-
 ,3)
-
 if r["打數"]>0 else 0,
-
 axis=1)
 
-        df["OPS"]=(df["OBP"]+df["SLG"]).round(3)
+    df["OPS"]=(df["OBP"]+df["SLG"]).round(3)
 
-        df.to_csv(FILE,index=False)
+    df.to_csv(FILE,index=False)
 
-        st.success("已更新")
+    st.success("已更新")
 
-# =====================
-# 顯示資料
-# =====================
+# ========= 顯示 =========
 
 st.header("球員成績")
 
@@ -253,15 +235,21 @@ use_container_width=True
 
 )
 
-# =====================
-# ADMIN刪除
-# =====================
+# ========= 每人刪除 =========
 
-if username==ADMIN and not df.empty:
+st.header("刪除自己的資料")
 
-    st.header("單筆刪除球員")
+if not df.empty:
 
-    options=df.apply(
+    if username==ADMIN:
+
+        delete_df=df
+
+    else:
+
+        delete_df=df[df["姓名"]==username]
+
+    options=delete_df.apply(
 
 lambda r:f"{r['球隊']} - #{int(r['背號'])} {r['姓名']}",
 
@@ -271,13 +259,13 @@ axis=1
 
     selected=st.selectbox(
 
-"選擇刪除球員",
+"選擇要刪除",
 
 options
 
 )
 
-    if st.button("❌ 刪除此球員"):
+    if st.button("❌ 刪除"):
 
         delete_index=options[options==selected].index[0]
 

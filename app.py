@@ -45,8 +45,6 @@ with col1:
 
     team=st.text_input("球隊")
 
-    opponent=st.text_input("對戰球隊")
-
     number=st.number_input("背號",0)
 
     name=st.text_input("姓名")
@@ -141,7 +139,6 @@ if st.button("新增或累計"):
 
 "日期":today,
 "球隊":team,
-"對戰球隊":opponent,
 "背號":number,
 "姓名":name,
 

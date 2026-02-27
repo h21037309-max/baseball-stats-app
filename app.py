@@ -6,245 +6,169 @@ from datetime import datetime
 
 st.set_page_config(layout="wide")
 
-st.title("⚾棒球紀錄系統（完全穩定版）")
-
-TEAM="team.csv"
-GAME="games.csv"
-
-
+st.title("⚾ 12局雙隊逐球紀錄系統 V1")
 
 # ======================
-# 初始化CSV
+# 檔案
 # ======================
 
-if not os.path.exists(TEAM):
+TEAM_FILE = "team.csv"
+PA_FILE = "plate_appearances.csv"
 
+# 初始化檔案
+if not os.path.exists(TEAM_FILE):
+    pd.DataFrame(columns=["player_id","姓名","背號"]).to_csv(TEAM_FILE,index=False)
+
+if not os.path.exists(PA_FILE):
     pd.DataFrame(columns=[
+        "game_id","inning","half","team",
+        "batter","pitch_seq","result"
+    ]).to_csv(PA_FILE,index=False)
 
-    "player_id",
-    "姓名",
-    "背號"
-
-    ]).to_csv(TEAM,index=False)
-
-
-
-if not os.path.exists(GAME):
-
-    pd.DataFrame(columns=[
-
-    "game_id",
-    "日期",
-    "對手"
-
-    ]).to_csv(GAME,index=False)
-
-
-
-team=pd.read_csv(TEAM)
-
-games=pd.read_csv(GAME)
-
-
-
-# ⭐ 修復壞資料（超重要）
-team=team.fillna("")
-
-if "背號" in team.columns:
-
-    team["背號"]=pd.to_numeric(
-
-    team["背號"],
-
-    errors="coerce"
-
-    ).fillna(0)
-
-
+team_df = pd.read_csv(TEAM_FILE)
+pa_df = pd.read_csv(PA_FILE)
 
 # ======================
-# 球員管理
+# Session 初始化
 # ======================
 
-st.header("👥 球員名單管理")
-
-name=st.text_input("姓名")
-
-number=st.number_input(
-
-"背號",
-
-0,
-
-999,
-
-0
-
-)
-
-
-if st.button("新增球員"):
-
-    if name!="":
-
-        new=pd.DataFrame([{
-
-        "player_id":str(uuid.uuid4()),
-
-        "姓名":name,
-
-        "背號":number
-
-        }])
-
-        team=pd.concat([team,new],ignore_index=True)
-
-        team.to_csv(TEAM,index=False)
-
-        st.success("新增成功")
-
-        st.rerun()
-
-
-
-st.subheader("目前球員")
-
-
-if team.empty:
-
-    st.info("尚無球員")
-
-else:
-
-    team=team.reset_index(drop=True)
-
-    for idx,r in team.iterrows():
-
-        col1,col2=st.columns([9,1])
-
-        # ⭐永遠不爆炸寫法
-        num=int(r["背號"]) if pd.notna(r["背號"]) else 0
-
-        col1.write(f"#{num}  {r['姓名']}")
-
-        delete_key=f"delete_{idx}"
-
-        if col2.button(
-
-        "刪除",
-
-        key=delete_key
-
-        ):
-
-            team=team.drop(idx)
-
-            team.to_csv(TEAM,index=False)
-
-            st.success("已刪除")
-
-            st.rerun()
-
-
+if "game_id" not in st.session_state:
+    st.session_state.game_id = str(uuid.uuid4())
+    st.session_state.inning = 1
+    st.session_state.half = "top"  # top=對手攻, bot=我方攻
+    st.session_state.outs = 0
+    st.session_state.pitch_seq = ""
+    st.session_state.lineup_home = []
+    st.session_state.lineup_away = []
+    st.session_state.current_index = 0
 
 # ======================
-# 建立比賽
+# 先發設定
 # ======================
 
-st.divider()
+st.header("⚾ 先發設定")
 
-st.header("⚾建立新比賽")
+col1, col2 = st.columns(2)
 
-game_date=st.date_input(
-
-"比賽日期",
-
-datetime.today()
-
-)
-
-enemy=st.text_input("對手")
-
-
-if st.button("建立比賽"):
-
-    if enemy=="":
-
-        st.warning("請輸入對手")
-
-    else:
-
-        new=pd.DataFrame([{
-
-        "game_id":str(uuid.uuid4()),
-
-        "日期":game_date.strftime("%Y-%m-%d"),
-
-        "對手":enemy
-
-        }])
-
-        games=pd.concat([games,new],ignore_index=True)
-
-        games.to_csv(GAME,index=False)
-
-        st.success("建立成功")
-
-        st.rerun()
-
-
-
-# ======================
-# 比賽列表
-# ======================
-
-st.divider()
-
-st.header("📅比賽列表")
-
-
-games=pd.read_csv(GAME)
-
-
-
-if games.empty:
-
-    st.info("尚未建立比賽")
-
-else:
-
-    games=games.reset_index(drop=True)
-
-    for idx,r in games.iterrows():
-
-        col1,col2=st.columns([9,1])
-
-        col1.write(
-
-        f"{r['日期']} VS {r['對手']}"
-
+with col1:
+    st.subheader("我方 1~9棒")
+    home_lineup = []
+    for i in range(9):
+        player = st.selectbox(
+            f"{i+1}棒",
+            team_df["姓名"].tolist(),
+            key=f"home_{i}"
         )
+        home_lineup.append(player)
 
-        delete_key=f"delete_game_{idx}"
+with col2:
+    st.subheader("對手 1~9 背號")
+    away_lineup = []
+    for i in range(9):
+        num = st.number_input(
+            f"{i+1}棒背號",
+            0,999,0,
+            key=f"away_{i}"
+        )
+        away_lineup.append(f"#{num}")
 
-        if col2.button(
+if st.button("開始比賽"):
+    st.session_state.lineup_home = home_lineup
+    st.session_state.lineup_away = away_lineup
+    st.success("比賽開始！")
+    st.rerun()
 
-        "刪除",
+# ======================
+# 比賽畫面
+# ======================
 
-        key=delete_key
+if st.session_state.lineup_home:
 
-        ):
+    st.divider()
 
-            games=games.drop(idx)
+    if st.session_state.inning > 12:
+        st.success("🎉 比賽結束（12局）")
+        st.stop()
 
-            games.to_csv(GAME,index=False)
+    half_text = "上半局（對手攻）" if st.session_state.half=="top" else "下半局（我方攻）"
 
-            st.success("比賽刪除")
+    st.header(f"第 {st.session_state.inning} 局 {half_text}")
+    st.write(f"出局數：{st.session_state.outs}")
+
+    # 目前打者
+    if st.session_state.half == "top":
+        lineup = st.session_state.lineup_away
+    else:
+        lineup = st.session_state.lineup_home
+
+    batter = lineup[st.session_state.current_index % 9]
+    st.subheader(f"目前打者：{batter}")
+
+    st.write(f"逐球紀錄：{st.session_state.pitch_seq}")
+
+    # ======================
+    # 逐球按鈕
+    # ======================
+
+    colA, colB, colC, colD = st.columns(4)
+
+    if colA.button("— 壞球"):
+        st.session_state.pitch_seq += "— "
+        st.rerun()
+
+    if colB.button("O 好球"):
+        st.session_state.pitch_seq += "O "
+        st.rerun()
+
+    if colC.button("Ø 揮空"):
+        st.session_state.pitch_seq += "Ø "
+        st.rerun()
+
+    if colD.button("△ 界外"):
+        st.session_state.pitch_seq += "△ "
+        st.rerun()
+
+    st.divider()
+    st.subheader("打席結果")
+
+    result_cols = st.columns(4)
+
+    results = ["H","2B","3B","HR","BB","K","GO","FO"]
+
+    for i,res in enumerate(results):
+        if result_cols[i%4].button(res, key=f"res_{res}"):
+
+            # 存檔
+            new_row = pd.DataFrame([{
+                "game_id":st.session_state.game_id,
+                "inning":st.session_state.inning,
+                "half":st.session_state.half,
+                "team":"away" if st.session_state.half=="top" else "home",
+                "batter":batter,
+                "pitch_seq":st.session_state.pitch_seq,
+                "result":res
+            }])
+
+            pa_df = pd.concat([pa_df,new_row],ignore_index=True)
+            pa_df.to_csv(PA_FILE,index=False)
+
+            # 出局計算
+            if res in ["K","GO","FO"]:
+                st.session_state.outs += 1
+
+            # 換下一棒
+            st.session_state.current_index += 1
+            st.session_state.pitch_seq = ""
+
+            # 三出局換半局
+            if st.session_state.outs >= 3:
+                st.session_state.outs = 0
+                st.session_state.current_index = 0
+
+                if st.session_state.half == "top":
+                    st.session_state.half = "bot"
+                else:
+                    st.session_state.half = "top"
+                    st.session_state.inning += 1
 
             st.rerun()
-
-
-
-st.divider()
-
-st.success("✅ 系統穩定運作中")

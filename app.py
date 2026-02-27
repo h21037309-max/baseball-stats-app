@@ -240,3 +240,142 @@ if "edit_mode" in st.session_state and st.session_state.edit_mode:
     if st.button("❌ 取消"):
         st.session_state.edit_mode = False
         st.rerun()
+
+# ======================
+# Part3 自動統計同步
+# ======================
+
+st.divider()
+st.header("⚙️ 自動同步逐球紀錄 → 打擊數據")
+
+if os.path.exists("pitch_log.csv"):
+
+    pitch_df = pd.read_csv("pitch_log.csv")
+
+else:
+
+    pitch_df = pd.DataFrame()
+
+
+if not pitch_df.empty:
+
+    if st.button("🔄 同步全部逐球紀錄"):
+
+        new_rows=[]
+
+        for _,row in pitch_df.iterrows():
+
+            result=row["result"]
+
+            name=row["姓名"]
+
+            # 初始化
+            AB=0
+            H=0
+
+            single=0
+            double=0
+            triple=0
+            HR=0
+
+            BB=0
+            SF=0
+
+            PA=1
+
+            # ===== 打席結果判斷 =====
+
+            if result=="OUT":
+
+                AB=1
+
+            elif result=="1B":
+
+                AB=1
+                H=1
+                single=1
+
+            elif result=="2B":
+
+                AB=1
+                H=1
+                double=1
+
+            elif result=="3B":
+
+                AB=1
+                H=1
+                triple=1
+
+            elif result=="HR":
+
+                AB=1
+                H=1
+                HR=1
+
+            elif result=="BB":
+
+                BB=1
+
+            elif result=="SF":
+
+                SF=1
+
+            # ===== 建立資料 =====
+
+            new_rows.append({
+
+            "紀錄ID":str(uuid.uuid4()),
+
+            "日期":datetime.now().strftime("%Y-%m-%d"),
+
+            "球隊":"AUTO",
+
+            "背號":0,
+
+            "姓名":name,
+
+            "對戰球隊":"逐球紀錄",
+
+            "打席":PA,
+
+            "打數":AB,
+
+            "得分":0,
+
+            "打點":0,
+
+            "安打":H,
+
+            "1B":single,
+
+            "2B":double,
+
+            "3B":triple,
+
+            "HR":HR,
+
+            "BB":BB,
+
+            "SF":SF,
+
+            "SH":0,
+
+            "SB":0
+
+            })
+
+
+        auto_df=pd.DataFrame(new_rows)
+
+        df=pd.concat([df,auto_df],ignore_index=True)
+
+        df.to_csv(DATA_FILE,index=False)
+
+        st.success("✅ 已同步逐球紀錄")
+
+        st.rerun()
+
+else:
+
+    st.info("尚無逐球紀錄")

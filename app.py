@@ -6,37 +6,59 @@ from datetime import datetime
 
 st.set_page_config(layout="wide")
 
-st.title("⚾棒球紀錄系統（穩定完整版）")
+st.title("⚾棒球紀錄系統（完全穩定版）")
 
 TEAM="team.csv"
 GAME="games.csv"
 
 
+
 # ======================
-# 初始化 CSV
+# 初始化CSV
 # ======================
 
 if not os.path.exists(TEAM):
 
     pd.DataFrame(columns=[
-        "player_id",
-        "姓名",
-        "背號"
+
+    "player_id",
+    "姓名",
+    "背號"
+
     ]).to_csv(TEAM,index=False)
+
 
 
 if not os.path.exists(GAME):
 
     pd.DataFrame(columns=[
-        "game_id",
-        "日期",
-        "對手"
+
+    "game_id",
+    "日期",
+    "對手"
+
     ]).to_csv(GAME,index=False)
+
 
 
 team=pd.read_csv(TEAM)
 
 games=pd.read_csv(GAME)
+
+
+
+# ⭐ 修復壞資料（超重要）
+team=team.fillna("")
+
+if "背號" in team.columns:
+
+    team["背號"]=pd.to_numeric(
+
+    team["背號"],
+
+    errors="coerce"
+
+    ).fillna(0)
 
 
 
@@ -48,7 +70,17 @@ st.header("👥 球員名單管理")
 
 name=st.text_input("姓名")
 
-number=st.number_input("背號",0,999,0)
+number=st.number_input(
+
+"背號",
+
+0,
+
+999,
+
+0
+
+)
 
 
 if st.button("新增球員"):
@@ -58,7 +90,9 @@ if st.button("新增球員"):
         new=pd.DataFrame([{
 
         "player_id":str(uuid.uuid4()),
+
         "姓名":name,
+
         "背號":number
 
         }])
@@ -88,12 +122,20 @@ else:
 
         col1,col2=st.columns([9,1])
 
-        col1.write(f"#{int(r['背號'])}  {r['姓名']}")
+        # ⭐永遠不爆炸寫法
+        num=int(r["背號"]) if pd.notna(r["背號"]) else 0
 
-        # ⭐唯一KEY 防爆炸
-        delete_key=f"delete_{idx}_{r['背號']}"
+        col1.write(f"#{num}  {r['姓名']}")
 
-        if col2.button("刪除",key=delete_key):
+        delete_key=f"delete_{idx}"
+
+        if col2.button(
+
+        "刪除",
+
+        key=delete_key
+
+        ):
 
             team=team.drop(idx)
 
@@ -111,7 +153,7 @@ else:
 
 st.divider()
 
-st.header("⚾ 建立新比賽")
+st.header("⚾建立新比賽")
 
 game_date=st.date_input(
 
@@ -121,7 +163,7 @@ datetime.today()
 
 )
 
-enemy=st.text_input("對手球隊")
+enemy=st.text_input("對手")
 
 
 if st.button("建立比賽"):
@@ -132,7 +174,7 @@ if st.button("建立比賽"):
 
     else:
 
-        new_game=pd.DataFrame([{
+        new=pd.DataFrame([{
 
         "game_id":str(uuid.uuid4()),
 
@@ -142,7 +184,7 @@ if st.button("建立比賽"):
 
         }])
 
-        games=pd.concat([games,new_game],ignore_index=True)
+        games=pd.concat([games,new],ignore_index=True)
 
         games.to_csv(GAME,index=False)
 
@@ -158,10 +200,11 @@ if st.button("建立比賽"):
 
 st.divider()
 
-st.header("📅 比賽列表")
+st.header("📅比賽列表")
 
 
 games=pd.read_csv(GAME)
+
 
 
 if games.empty:
@@ -202,19 +245,6 @@ else:
 
 
 
-# ======================
-# 下階段提示
-# ======================
-
 st.divider()
 
-st.info("""
-
-下一步將加入：
-
-✔ 先發1~9棒設定  
-✔ 投手  
-✔ 攻守交換  
-✔ 逐球紀錄表  
-
-""")
+st.success("✅ 系統穩定運作中")

@@ -1,375 +1,177 @@
 import streamlit as st
-import pandas as pd
 from datetime import datetime
-import os
 
 st.set_page_config(layout="wide")
 
-st.title("⚾ 棒球打擊數據系統")
+st.title("⚾ 台灣傳統逐球紀錄系統 V1")
 
-FILE="data.csv"
+# ==============================
+# 初始化
+# ==============================
 
-# =====================
-# 登入
-# =====================
+if "game" not in st.session_state:
+    st.session_state.game = []
 
-st.sidebar.title("登入")
+if "current_pa" not in st.session_state:
+    st.session_state.current_pa = []
 
-users={
+# ==============================
+# 基本資訊
+# ==============================
 
-"洪仲平":"8610",
+col1, col2 = st.columns(2)
 
-"王小明":"1111",
+with col1:
+    game_date = st.date_input("比賽日期", datetime.today())
 
-"陳志豪":"2222",
+with col2:
+    opponent = st.text_input("對戰球隊")
 
-"邱珈琪":"0000",
+st.divider()
 
-"黃李孟蓁":"1109"
+# ==============================
+# 逐球紀錄區
+# ==============================
 
+st.header("🎯 逐球紀錄")
+
+cols = st.columns(6)
+
+symbols = {
+    "O": "看好球",
+    "Ø": "揮棒好球",
+    "△": "界外球",
+    "—": "壞球",
+    "●": "擊球進場",
 }
 
-ADMIN="洪仲平"
+for i, (sym, text) in enumerate(symbols.items()):
+    if cols[i].button(f"{sym}\n{text}"):
+        st.session_state.current_pa.append(sym)
 
-username=st.sidebar.text_input("帳號")
+# 清除按鈕
+if st.button("清除本打席"):
+    st.session_state.current_pa = []
 
-password=st.sidebar.text_input(
-"密碼",
-type="password"
+st.subheader("目前逐球紀錄")
+st.write(" ".join(st.session_state.current_pa))
+
+# ==============================
+# 自動球數判斷
+# ==============================
+
+balls = st.session_state.current_pa.count("—")
+strikes = (
+    st.session_state.current_pa.count("O")
+    + st.session_state.current_pa.count("Ø")
+    + st.session_state.current_pa.count("△")
 )
 
-if username not in users or users[username]!=password:
+st.write(f"壞球: {balls}   好球: {strikes}")
 
-    st.warning("左上角登入")
+# 自動三振判斷
+if strikes >= 3:
+    st.warning("⚠ 三振成立")
 
-    st.stop()
+# 自動四壞判斷
+if balls >= 4:
+    st.warning("⚠ 四壞成立")
 
-# =====================
-# 欄位
-# =====================
+# ==============================
+# 打席結果
+# ==============================
 
-columns=[
+st.divider()
+st.header("📌 打席結果")
 
-"日期","球隊","背號","姓名",
-
-"對戰球隊","投手",
-
-"打席","打數","得分","打點","安打",
-
-"1B","2B","3B","HR",
-
-"BB","SF","SH","SB"
-
-]
-
-# =====================
-# CSV
-# =====================
-
-if os.path.exists(FILE):
-
-    df=pd.read_csv(FILE)
-
-else:
-
-    df=pd.DataFrame(columns=columns)
-
-# 補欄位
-for col in columns:
-
-    if col not in df.columns:
-
-        df[col]=0
-
-df=df.fillna(0)
-
-# =====================
-# ADMIN 後台總覽
-# =====================
-
-if username==ADMIN and not df.empty:
-
-    st.header("🏆 後台：全部球員排行榜")
-
-    summary=df.groupby(
-
-["球隊","背號","姓名"],
-
-as_index=False
-
-).sum(numeric_only=True)
-
-    TB=(
-summary["1B"]
-+summary["2B"]*2
-+summary["3B"]*3
-+summary["HR"]*4
+result = st.selectbox(
+    "選擇結果",
+    ["", "1B", "2B", "3B", "HR", "BB", "K", "OUT", "SF"],
 )
 
-    summary["AVG"]=summary.apply(
+if st.button("完成打席"):
 
-lambda r:round(r["安打"]/r["打數"],3)
-
-if r["打數"]>0 else 0,
-
-axis=1)
-
-    summary["OBP"]=summary.apply(
-
-lambda r:round(
-
-(r["安打"]+r["BB"])/
-(r["打數"]+r["BB"]+r["SF"])
-
-,3)
-
-if (r["打數"]+r["BB"]+r["SF"])>0 else 0,
-
-axis=1)
-
-    summary["SLG"]=summary.apply(
-
-lambda r:round(
-
-(r["1B"]+r["2B"]*2+r["3B"]*3+r["HR"]*4)/
-r["打數"]
-
-,3)
-
-if r["打數"]>0 else 0,
-
-axis=1)
-
-    summary["OPS"]=(
-
-summary["OBP"]+
-summary["SLG"]
-
-).round(3)
-
-    st.dataframe(
-
-summary[
-
-["球隊","背號","姓名",
-
-"打席","打數","安打",
-
-"AVG","OPS"]
-
-].sort_values("OPS",ascending=False),
-
-use_container_width=True
-
-)
-
-# =====================
-# 基本資料
-# =====================
-
-st.header("球員基本資料")
-
-colA,colB=st.columns(2)
-
-with colA:
-
-    team=st.text_input("球隊")
-
-with colB:
-
-    number=st.number_input("背號",0)
-
-if username==ADMIN:
-
-    name=st.text_input("姓名")
-
-else:
-
-    name=username
-
-    st.write(f"球員：{name}")
-
-# =====================
-# 新增比賽
-# =====================
-
-st.header("新增比賽紀錄")
-
-c1,c2,c3=st.columns(3)
-
-with c1:
-
-    opponent=st.text_input("對戰球隊")
-
-    pitcher=st.selectbox(
-
-"投手",
-
-["左投","右投"]
-
-)
-
-with c2:
-
-    PA=st.number_input("打席",0)
-
-    AB=st.number_input("打數",0)
-
-    R=st.number_input("得分",0)
-
-    RBI=st.number_input("打點",0)
-
-    H=st.number_input("安打",0)
-
-with c3:
-
-    single=st.number_input("1B",0)
-
-    double=st.number_input("2B",0)
-
-    triple=st.number_input("3B",0)
-
-    HR=st.number_input("HR",0)
-
-    BB=st.number_input("BB",0)
-
-    SF=st.number_input("SF",0)
-
-    SH=st.number_input("SH",0)
-
-    SB=st.number_input("SB",0)
-
-# =====================
-# 新增
-# =====================
-
-if st.button("新增紀錄"):
-
-    today=datetime.now().strftime("%Y-%m-%d")
-
-    new=pd.DataFrame([{
-
-"日期":today,
-"球隊":team,
-"背號":number,
-"姓名":name,
-
-"對戰球隊":opponent,
-"投手":pitcher,
-
-"打席":PA,
-"打數":AB,
-"得分":R,
-"打點":RBI,
-"安打":H,
-
-"1B":single,
-"2B":double,
-"3B":triple,
-"HR":HR,
-
-"BB":BB,
-"SF":SF,
-"SH":SH,
-"SB":SB
-
-}])
-
-    df=pd.concat([df,new],ignore_index=True)
-
-    df.to_csv(FILE,index=False)
-
-    st.success("新增成功")
-
-# =====================
-# 顯示紀錄
-# =====================
-
-st.header("比賽紀錄")
-
-if not df.empty:
-
-    if username==ADMIN:
-
-        player_df=df
-
+    if result == "":
+        st.error("請選擇結果")
     else:
+        st.session_state.game.append(
+            {
+                "pitches": st.session_state.current_pa.copy(),
+                "result": result,
+            }
+        )
+        st.session_state.current_pa = []
+        st.success("打席已完成")
 
-        player_df=df[df["姓名"]==username]
+# ==============================
+# 本場統計
+# ==============================
 
-    total=player_df.sum(numeric_only=True)
+st.divider()
+st.header("📊 本場統計")
 
-    TB=(
-total["1B"]
-+total["2B"]*2
-+total["3B"]*3
-+total["HR"]*4
-)
+AB = 0
+H = 0
+TB = 0
+BB = 0
+SF = 0
 
-    AB_total=total["打數"]
+for pa in st.session_state.game:
 
-    H_total=total["安打"]
+    r = pa["result"]
 
-    AVG=round(H_total/AB_total,3) if AB_total>0 else 0
+    if r == "1B":
+        AB += 1
+        H += 1
+        TB += 1
 
-    OBP=round(
+    elif r == "2B":
+        AB += 1
+        H += 1
+        TB += 2
 
-(H_total+total["BB"])/
-(AB_total+total["BB"]+total["SF"])
+    elif r == "3B":
+        AB += 1
+        H += 1
+        TB += 3
 
-,3) if (AB_total+total["BB"]+total["SF"])>0 else 0
+    elif r == "HR":
+        AB += 1
+        H += 1
+        TB += 4
 
-    SLG=round(TB/AB_total,3) if AB_total>0 else 0
+    elif r == "BB":
+        BB += 1
 
-    OPS=round(OBP+SLG,3)
+    elif r == "SF":
+        SF += 1
 
-    st.subheader("累積統計")
+    elif r in ["K", "OUT"]:
+        AB += 1
 
-    m1,m2,m3,m4=st.columns(4)
+# 計算數據
+AVG = H / AB if AB > 0 else 0
+OBP = (H + BB) / (AB + BB + SF) if (AB + BB + SF) > 0 else 0
+SLG = TB / AB if AB > 0 else 0
+OPS = OBP + SLG
 
-    m1.metric("打席",int(total["打席"]))
+col1, col2, col3, col4, col5, col6 = st.columns(6)
 
-    m2.metric("安打",int(H_total))
+col1.metric("打數", AB)
+col2.metric("安打", H)
+col3.metric("打擊率", round(AVG, 3))
+col4.metric("上壘率", round(OBP, 3))
+col5.metric("長打率", round(SLG, 3))
+col6.metric("OPS", round(OPS, 3))
 
-    m3.metric("AVG",AVG)
+# ==============================
+# 顯示所有打席
+# ==============================
 
-    m4.metric("OPS",OPS)
+st.divider()
+st.header("📄 打席紀錄")
 
-    st.subheader("每場紀錄")
-
-    show_df=player_df.sort_values("日期",ascending=False)
-
-    for idx,row in show_df.iterrows():
-
-        with st.container():
-
-            colA,colB=st.columns([9,1])
-
-            with colA:
-
-                st.markdown(f"""
-
-### 📅 {row['日期']} ｜ {row['球隊']} #{int(row['背號'])} {row['姓名']}
-
-vs {row['對戰球隊']} ｜ {row['投手']}
-
-PA {int(row['打席'])} ｜ AB {int(row['打數'])} ｜ H {int(row['安打'])} ｜ RBI {int(row['打點'])} ｜ R {int(row['得分'])}
-
-1B {int(row['1B'])} ｜ 2B {int(row['2B'])} ｜ 3B {int(row['3B'])} ｜ HR {int(row['HR'])}
-
-BB {int(row['BB'])} ｜ SF {int(row['SF'])} ｜ SH {int(row['SH'])} ｜ SB {int(row['SB'])}
-
----
-""")
-
-            with colB:
-
-                if st.button("❌",key=f"del{idx}"):
-
-                    df=df.drop(idx)
-
-                    df.to_csv(FILE,index=False)
-
-                    st.success("已刪除")
-
-                    st.rerun()
+for i, pa in enumerate(st.session_state.game):
+    st.write(
+        f"打席 {i+1}：{' '.join(pa['pitches'])} → {pa['result']}"
+    )

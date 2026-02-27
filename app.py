@@ -1,93 +1,160 @@
 import streamlit as st
 import pandas as pd
-import os
 from datetime import datetime
+import os
+import uuid
+
 
 st.set_page_config(layout="wide")
 
-st.title("⚾ 棒球專業紀錄表 V3")
+st.title("⚾棒球比賽紀錄系統")
 
+
+TEAM_FILE="team.csv"
 GAME_FILE="games.csv"
 LINEUP_FILE="lineup.csv"
-PITCH_FILE="pitch_log.csv"
 
 
 # ======================
-# 建立CSV
+# 初始化CSV
 # ======================
 
-def init_csv():
+if not os.path.exists(TEAM_FILE):
 
-    if not os.path.exists(GAME_FILE):
-
-        pd.DataFrame(columns=[
-
-        "比賽ID",
-        "日期",
-        "對手"
-
-        ]).to_csv(GAME_FILE,index=False)
+    pd.DataFrame(columns=["姓名"]).to_csv(TEAM_FILE,index=False)
 
 
-    if not os.path.exists(LINEUP_FILE):
+if not os.path.exists(GAME_FILE):
 
-        pd.DataFrame(columns=[
+    pd.DataFrame(
 
-        "比賽ID",
-        "棒次",
-        "姓名",
-        "守位"
+    columns=["比賽ID","日期","對手"]
 
-        ]).to_csv(LINEUP_FILE,index=False)
+    ).to_csv(GAME_FILE,index=False)
 
 
-    if not os.path.exists(PITCH_FILE):
+if not os.path.exists(LINEUP_FILE):
 
-        pd.DataFrame(columns=[
+    pd.DataFrame(
 
-        "比賽ID",
-        "局",
-        "上下",
-        "棒次",
-        "球數"
+    columns=["比賽ID","棒次","姓名","守位"]
 
-        ]).to_csv(PITCH_FILE,index=False)
+    ).to_csv(LINEUP_FILE,index=False)
 
-init_csv()
-
-
-game_df=pd.read_csv(GAME_FILE)
-lineup_df=pd.read_csv(LINEUP_FILE)
-pitch_df=pd.read_csv(PITCH_FILE)
 
 
 # ======================
-# 建立比賽
+# 名單管理
 # ======================
 
-st.header("建立比賽")
+st.header("👥 球隊30人名單")
 
-date=st.date_input("日期",datetime.today())
+team_df=pd.read_csv(TEAM_FILE)
+
+new_player=st.text_input("新增球員")
+
+
+if st.button("新增球員"):
+
+    if new_player.strip()!="":
+
+        team_df=pd.concat(
+
+        [
+
+        team_df,
+
+        pd.DataFrame([{
+
+        "姓名":new_player.strip()
+
+        }])
+
+        ],
+
+        ignore_index=True
+
+        )
+
+        team_df.to_csv(
+
+        TEAM_FILE,
+
+        index=False
+
+        )
+
+        st.rerun()
+
+
+
+st.dataframe(team_df,use_container_width=True)
+
+
+
+# ======================
+# 建立比賽（穩定版）
+# ======================
+
+st.header("📅 建立比賽")
+
+
+date=st.date_input(
+
+"比賽日期",
+
+datetime.today()
+
+)
 
 opponent=st.text_input("對手")
 
+
 if st.button("建立新比賽"):
 
-    gid=str(len(game_df)+1)
+    if opponent.strip()=="":
+
+        st.warning("請輸入對手")
+
+        st.stop()
+
+
+    game_df=pd.read_csv(GAME_FILE)
+
+
+    gid=str(uuid.uuid4())
+
 
     new=pd.DataFrame([{
 
     "比賽ID":gid,
+
     "日期":date.strftime("%Y-%m-%d"),
+
     "對手":opponent
 
     }])
 
-    game_df=pd.concat([game_df,new])
 
-    game_df.to_csv(GAME_FILE,index=False)
+    game_df=pd.concat(
 
-    st.success("建立成功")
+    [game_df,new],
+
+    ignore_index=True
+
+    )
+
+
+    game_df.to_csv(
+
+    GAME_FILE,
+
+    index=False
+
+    )
+
+
+    st.success("✅ 建立成功")
 
     st.rerun()
 
@@ -97,18 +164,43 @@ if st.button("建立新比賽"):
 # 選擇比賽
 # ======================
 
+st.header("🎮 選擇比賽")
+
+game_df=pd.read_csv(GAME_FILE)
+
+game_df=game_df.fillna("")
+
+
 if game_df.empty:
 
+    st.info("尚無比賽")
+
     st.stop()
+
+
+game_df["顯示"]=(
+
+game_df["比賽ID"].astype(str)
+
++" ｜ "
+
++game_df["日期"].astype(str)
+
++" vs "
+
++game_df["對手"].astype(str)
+
+)
 
 
 game_select=st.selectbox(
 
 "選擇比賽",
 
-game_df["比賽ID"]+" ｜ "+game_df["日期"]+" vs "+game_df["對手"]
+game_df["顯示"].tolist()
 
 )
+
 
 game_id=game_select.split(" ｜ ")[0]
 
@@ -118,31 +210,55 @@ game_id=game_select.split(" ｜ ")[0]
 # 先發名單
 # ======================
 
-st.header("先發名單")
+st.header("📋 先發名單")
+
+
+team_df=pd.read_csv(TEAM_FILE)
+
+
+if team_df.empty:
+
+    st.warning("請先新增球員")
+
+    st.stop()
+
+
+players=team_df["姓名"].tolist()
+
 
 positions=[
 
-"SS","CF","LF","RF","1B","2B","3B","C","DH","P"
+"CF","RF","LF",
+
+"1B","2B","3B",
+
+"SS","C","DH","P"
 
 ]
 
-names=[]
 
-for i in range(9):
+lineup_df=pd.read_csv(LINEUP_FILE)
 
-    col1,col2=st.columns(2)
 
-    with col1:
+for i in range(1,10):
 
-        name=st.text_input(
+    c1,c2=st.columns(2)
 
-        f"{i+1}棒",
 
-        key=f"name{i}"
+    with c1:
+
+        batter=st.selectbox(
+
+        f"{i}棒",
+
+        players,
+
+        key=f"bat{i}"
 
         )
 
-    with col2:
+
+    with c2:
 
         pos=st.selectbox(
 
@@ -154,228 +270,127 @@ for i in range(9):
 
         )
 
-    names.append((i+1,name,pos))
+
+    if st.button(
+
+    f"登記{i}棒",
+
+    key=f"save{i}"
+
+    ):
+
+        new=pd.DataFrame([{
+
+        "比賽ID":game_id,
+
+        "棒次":i,
+
+        "姓名":batter,
+
+        "守位":pos
+
+        }])
 
 
-pitcher=st.text_input("投手")
+        lineup_df=pd.concat(
 
+        [
 
-if st.button("儲存先發"):
+        lineup_df,
 
-    lineup_df=lineup_df[
+        new
 
-    lineup_df["比賽ID"]!=game_id
+        ],
 
-    ]
-
-    new=[]
-
-    for bat,name,pos in names:
-
-        if name!="":
-
-            new.append({
-
-            "比賽ID":game_id,
-            "棒次":bat,
-            "姓名":name,
-            "守位":pos
-
-            })
-
-    new.append({
-
-    "比賽ID":game_id,
-    "棒次":0,
-    "姓名":pitcher,
-    "守位":"P"
-
-    })
-
-    lineup_df=pd.concat([
-
-    lineup_df,
-    pd.DataFrame(new)
-
-    ])
-
-    lineup_df.to_csv(LINEUP_FILE,index=False)
-
-    st.success("先發完成")
-
-    st.rerun()
-
-
-
-# ======================
-# 局數控制
-# ======================
-
-st.divider()
-
-st.header("比賽紀錄")
-
-if "inning" not in st.session_state:
-
-    st.session_state.inning=1
-
-if "half" not in st.session_state:
-
-    st.session_state.half="上"
-
-
-
-col1,col2,col3=st.columns(3)
-
-with col1:
-
-    if st.button("◀ 上一局"):
-
-        st.session_state.inning=max(
-
-        1,
-        st.session_state.inning-1
+        ignore_index=True
 
         )
 
-with col2:
 
-    st.subheader(
+        lineup_df.to_csv(
 
-    f"{st.session_state.inning} 局 {st.session_state.half}"
+        LINEUP_FILE,
 
-    )
+        index=False
 
-with col3:
+        )
 
-    if st.button("下一局 ▶"):
+        st.success("已登記")
 
-        st.session_state.inning+=1
-
-
-
-if st.button("攻守交換"):
-
-    st.session_state.half=(
-
-    "下"
-
-    if st.session_state.half=="上"
-
-    else "上"
-
-    )
+        st.rerun()
 
 
 
 # ======================
-# 打席
+# 顯示先發
 # ======================
 
-st.subheader("打席紀錄")
+st.header("⭐本場先發")
 
-lineup=lineup_df[
 
-lineup_df["比賽ID"]==game_id
+show=lineup_df[
+
+lineup_df["比賽ID"]
+
+==game_id
 
 ]
 
-if lineup.empty:
 
-    st.info("請先登錄先發")
+if show.empty:
 
-    st.stop()
+    st.info("尚未建立先發")
+
+else:
+
+    st.dataframe(
+
+    show.sort_values("棒次"),
+
+    use_container_width=True
+
+    )
 
 
-batters=lineup[lineup["棒次"]!=0]
 
-bat_select=st.selectbox(
+# ======================
+# 局數紀錄（示範）
+# ======================
 
-"選擇打者",
+st.header("📝 局數紀錄")
 
-batters["姓名"]
+
+inning=st.number_input(
+
+"局數",
+
+1,
+
+12,
+
+1
 
 )
 
-symbol_col1,symbol_col2=st.columns(2)
 
-with symbol_col1:
+side=st.radio(
 
-    if st.button("O 好球"):
+"攻守",
 
-        symbol="O"
+["我方進攻","對手進攻"]
 
-    else:
-
-        symbol=None
-
-with symbol_col2:
-
-    if st.button("O/ 揮棒"):
-
-        symbol="O/"
-
-    else:
-
-        symbol=None
+)
 
 
-col3,col4=st.columns(2)
+st.write(
 
-with col3:
+f"目前紀錄：{inning}局 {side}"
 
-    if st.button("△ 界外"):
-
-        symbol="△"
-
-with col4:
-
-    if st.button("— 壞球"):
-
-        symbol="—"
+)
 
 
-if symbol:
+st.info(
 
-    new=pd.DataFrame([{
+"下一步會升級成真正紀錄表"
 
-    "比賽ID":game_id,
-
-    "局":st.session_state.inning,
-
-    "上下":st.session_state.half,
-
-    "棒次":bat_select,
-
-    "球數":symbol
-
-    }])
-
-    pitch_df=pd.concat([pitch_df,new])
-
-    pitch_df.to_csv(PITCH_FILE,index=False)
-
-    st.rerun()
-
-
-
-# ======================
-# 顯示紀錄
-# ======================
-
-st.divider()
-
-st.header("本局紀錄")
-
-show=pitch_df[
-
-(pitch_df["比賽ID"]==game_id)&
-
-(pitch_df["局"]==st.session_state.inning)&
-
-(pitch_df["上下"]==st.session_state.half)
-
-]
-
-
-st.dataframe(show,use_container_width=True)
+)

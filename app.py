@@ -379,3 +379,200 @@ if not pitch_df.empty:
 else:
 
     st.info("尚無逐球紀錄")
+
+# ======================
+# 職棒逐球紀錄表
+# ======================
+
+if page=="逐球記錄表":
+
+    st.title("⚾ 職棒逐球記錄")
+
+    LINEUP_FILE="lineup.csv"
+    PITCH_FILE="pitch_log.csv"
+
+
+    # =========先發名單=========
+
+    st.subheader("⭐先發打線")
+
+    if os.path.exists(LINEUP_FILE):
+
+        lineup=pd.read_csv(LINEUP_FILE)
+
+    else:
+
+        lineup=pd.DataFrame(columns=["棒次","姓名"])
+
+
+    with st.form("lineup"):
+
+        players=[]
+
+        for i in range(1,10):
+
+            name=st.text_input(f"{i}棒")
+
+            players.append(name)
+
+        if st.form_submit_button("儲存先發"):
+
+            new=pd.DataFrame({
+
+            "棒次":range(1,10),
+
+            "姓名":players
+
+            })
+
+            new.to_csv(LINEUP_FILE,index=False)
+
+            st.success("完成")
+
+            st.rerun()
+
+
+    if os.path.exists(LINEUP_FILE):
+
+        lineup=pd.read_csv(LINEUP_FILE)
+
+    else:
+
+        st.stop()
+
+
+    # =========局數=========
+
+    inning=st.slider(
+
+    "局數",
+
+    1,9,1
+
+    )
+
+
+    offense=st.radio(
+
+    "攻守",
+
+    ["我方攻擊","對手攻擊"]
+
+    )
+
+
+    # =========逐球=========
+
+    st.subheader(f"第{inning}局 {offense}")
+
+
+    batter=st.selectbox(
+
+    "打者",
+
+    lineup["姓名"]
+
+    )
+
+
+    symbol=st.selectbox(
+
+    "球種符號",
+
+    [
+
+    "O 好球",
+
+    "揮空",
+
+    "△界外",
+
+    "—壞球"
+
+    ]
+
+    )
+
+
+    result=st.selectbox(
+
+    "結果",
+
+    [
+
+    "未結束",
+
+    "OUT",
+
+    "1B",
+
+    "2B",
+
+    "3B",
+
+    "HR",
+
+    "BB",
+
+    "SF"
+
+    ]
+
+    )
+
+
+    if st.button("紀錄一球"):
+
+        new=pd.DataFrame([{
+
+        "時間":datetime.now(),
+
+        "局":inning,
+
+        "攻守":offense,
+
+        "姓名":batter,
+
+        "符號":symbol,
+
+        "result":result
+
+        }])
+
+
+        if os.path.exists(PITCH_FILE):
+
+            old=pd.read_csv(PITCH_FILE)
+
+            new=pd.concat([old,new])
+
+
+        new.to_csv(PITCH_FILE,index=False)
+
+        st.success("已紀錄")
+
+        st.rerun()
+
+
+
+    # =========紀錄顯示=========
+
+    if os.path.exists(PITCH_FILE):
+
+        log=pd.read_csv(PITCH_FILE)
+
+        show=log[
+
+        (log["局"]==inning)&
+
+        (log["攻守"]==offense)
+
+        ]
+
+
+        st.dataframe(
+
+        show.sort_values("時間",ascending=False),
+
+        use_container_width=True
+        )

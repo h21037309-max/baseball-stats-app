@@ -1,174 +1,169 @@
 import streamlit as st
+from google.cloud import vision
+from PIL import Image
 import pandas as pd
-import os
+import io
+import re
 import uuid
-from datetime import datetime
+import os
 
-st.set_page_config(layout="wide")
 
-st.title("⚾ 12局雙隊逐球紀錄系統 V1")
+TEAM_FILE="team_players.csv"
 
-# ======================
-# 檔案
-# ======================
 
-TEAM_FILE = "team.csv"
-PA_FILE = "plate_appearances.csv"
+st.title("📸 名冊拍照匯入球員")
 
-# 初始化檔案
-if not os.path.exists(TEAM_FILE):
-    pd.DataFrame(columns=["player_id","姓名","背號"]).to_csv(TEAM_FILE,index=False)
 
-if not os.path.exists(PA_FILE):
-    pd.DataFrame(columns=[
-        "game_id","inning","half","team",
-        "batter","pitch_seq","result"
-    ]).to_csv(PA_FILE,index=False)
+# ========= 上傳 =========
 
-team_df = pd.read_csv(TEAM_FILE)
-pa_df = pd.read_csv(PA_FILE)
+tab1,tab2=st.tabs(["📸 拍照","📂 上傳"])
 
-# ======================
-# Session 初始化
-# ======================
 
-if "game_id" not in st.session_state:
-    st.session_state.game_id = str(uuid.uuid4())
-    st.session_state.inning = 1
-    st.session_state.half = "top"  # top=對手攻, bot=我方攻
-    st.session_state.outs = 0
-    st.session_state.pitch_seq = ""
-    st.session_state.lineup_home = []
-    st.session_state.lineup_away = []
-    st.session_state.current_index = 0
+image=None
 
-# ======================
-# 先發設定
-# ======================
+with tab1:
 
-st.header("⚾ 先發設定")
+    image=st.camera_input("拍攝紙本名冊")
 
-col1, col2 = st.columns(2)
 
-with col1:
-    st.subheader("我方 1~9棒")
-    home_lineup = []
-    for i in range(9):
-        player = st.selectbox(
-            f"{i+1}棒",
-            team_df["姓名"].tolist(),
-            key=f"home_{i}"
+with tab2:
+
+    upload=st.file_uploader("上傳圖片",type=["jpg","png","jpeg"])
+
+    if upload:
+
+        image=upload
+
+
+
+# ========= OCR =========
+
+def ocr_text(img):
+
+    client=vision.ImageAnnotatorClient()
+
+    content=img.read()
+
+    image=vision.Image(content=content)
+
+    response=client.text_detection(image=image)
+
+    texts=response.text_annotations
+
+    if not texts:
+
+        return ""
+
+    return texts[0].description
+
+
+
+# ========= 辨識 =========
+
+if image:
+
+    st.image(image,width=400)
+
+    if st.button("開始辨識"):
+
+        with st.spinner("OCR 辨識中..."):
+
+            text=ocr_text(image)
+
+        st.session_state["ocr_raw"]=text
+
+
+
+# ========= 解析 =========
+
+if "ocr_raw" in st.session_state:
+
+    st.subheader("OCR文字")
+
+    st.text_area(
+
+    "辨識結果",
+
+    st.session_state["ocr_raw"],
+
+    height=200
+
+    )
+
+
+    raw=st.session_state["ocr_raw"]
+
+
+    # ⭐ 背號 姓名
+
+    pattern=r"(\d{1,3})\s*([一-龥]{2,4})"
+
+
+    matches=re.findall(pattern,raw)
+
+
+    if matches:
+
+        st.success(f"辨識到 {len(matches)} 位球員")
+
+
+        data=[]
+
+        for num,name in matches:
+
+            data.append({
+
+            "player_id":str(uuid.uuid4()),
+
+            "背號":int(num),
+
+            "姓名":name
+
+            })
+
+
+        df=pd.DataFrame(data)
+
+
+        st.subheader("確認球員")
+
+        edited=st.data_editor(
+
+        df,
+
+        num_rows="dynamic",
+
+        use_container_width=True
+
         )
-        home_lineup.append(player)
 
-with col2:
-    st.subheader("對手 1~9 背號")
-    away_lineup = []
-    for i in range(9):
-        num = st.number_input(
-            f"{i+1}棒背號",
-            0,999,0,
-            key=f"away_{i}"
-        )
-        away_lineup.append(f"#{num}")
 
-if st.button("開始比賽"):
-    st.session_state.lineup_home = home_lineup
-    st.session_state.lineup_away = away_lineup
-    st.success("比賽開始！")
-    st.rerun()
+        # ========= 匯入 =========
 
-# ======================
-# 比賽畫面
-# ======================
+        if st.button("✅ 匯入球員"):
 
-if st.session_state.lineup_home:
+            if os.path.exists(TEAM_FILE):
 
-    st.divider()
+                old=pd.read_csv(TEAM_FILE)
 
-    if st.session_state.inning > 12:
-        st.success("🎉 比賽結束（12局）")
-        st.stop()
+                new=pd.concat([old,edited])
 
-    half_text = "上半局（對手攻）" if st.session_state.half=="top" else "下半局（我方攻）"
+            else:
 
-    st.header(f"第 {st.session_state.inning} 局 {half_text}")
-    st.write(f"出局數：{st.session_state.outs}")
+                new=edited
 
-    # 目前打者
-    if st.session_state.half == "top":
-        lineup = st.session_state.lineup_away
-    else:
-        lineup = st.session_state.lineup_home
 
-    batter = lineup[st.session_state.current_index % 9]
-    st.subheader(f"目前打者：{batter}")
+            new.to_csv(TEAM_FILE,index=False)
 
-    st.write(f"逐球紀錄：{st.session_state.pitch_seq}")
 
-    # ======================
-    # 逐球按鈕
-    # ======================
+            st.success("匯入完成")
 
-    colA, colB, colC, colD = st.columns(4)
+            st.balloons()
 
-    if colA.button("— 壞球"):
-        st.session_state.pitch_seq += "— "
-        st.rerun()
-
-    if colB.button("O 好球"):
-        st.session_state.pitch_seq += "O "
-        st.rerun()
-
-    if colC.button("Ø 揮空"):
-        st.session_state.pitch_seq += "Ø "
-        st.rerun()
-
-    if colD.button("△ 界外"):
-        st.session_state.pitch_seq += "△ "
-        st.rerun()
-
-    st.divider()
-    st.subheader("打席結果")
-
-    result_cols = st.columns(4)
-
-    results = ["H","2B","3B","HR","BB","K","GO","FO"]
-
-    for i,res in enumerate(results):
-        if result_cols[i%4].button(res, key=f"res_{res}"):
-
-            # 存檔
-            new_row = pd.DataFrame([{
-                "game_id":st.session_state.game_id,
-                "inning":st.session_state.inning,
-                "half":st.session_state.half,
-                "team":"away" if st.session_state.half=="top" else "home",
-                "batter":batter,
-                "pitch_seq":st.session_state.pitch_seq,
-                "result":res
-            }])
-
-            pa_df = pd.concat([pa_df,new_row],ignore_index=True)
-            pa_df.to_csv(PA_FILE,index=False)
-
-            # 出局計算
-            if res in ["K","GO","FO"]:
-                st.session_state.outs += 1
-
-            # 換下一棒
-            st.session_state.current_index += 1
-            st.session_state.pitch_seq = ""
-
-            # 三出局換半局
-            if st.session_state.outs >= 3:
-                st.session_state.outs = 0
-                st.session_state.current_index = 0
-
-                if st.session_state.half == "top":
-                    st.session_state.half = "bot"
-                else:
-                    st.session_state.half = "top"
-                    st.session_state.inning += 1
+            del st.session_state["ocr_raw"]
 
             st.rerun()
+
+    else:
+
+        st.error("沒有辨識到背號與姓名")

@@ -15,7 +15,8 @@ st.title("⚾ 棒球紀錄系統")
 
 page = st.sidebar.radio(
     "功能選單",
-    ["📖 紀錄符號一覽", "📝 建立比賽 / 登記球員"]
+    ["📖 紀錄符號一覽", "📝 建立比賽 / 登記球員",
+     "🏟 比賽紀錄"]
 )
 
 # =========================================================
@@ -176,3 +177,98 @@ elif page == "📝 建立比賽 / 登記球員":
 
         st.success("比賽建立完成，球員已加入後台資料庫")
         st.balloons()
+
+elif page == "🏟 比賽紀錄":
+
+    st.header("🏟 比賽紀錄")
+
+    if not os.path.exists(PLAYERS_FILE):
+        st.warning("請先建立比賽並登記球員")
+        st.stop()
+
+    players = pd.read_csv(PLAYERS_FILE)
+
+    # 初始化 session
+    if "inning" not in st.session_state:
+        st.session_state.inning = 1
+        st.session_state.half = "上"
+        st.session_state.score_home = 0
+        st.session_state.score_away = 0
+
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        if st.button("⬅ 上一局"):
+            if st.session_state.inning > 1:
+                st.session_state.inning -= 1
+
+    with col2:
+        st.subheader(f"第 {st.session_state.inning} 局 {st.session_state.half} 半")
+
+    with col3:
+        if st.button("下一局 ➡"):
+            st.session_state.inning += 1
+
+    st.divider()
+
+    st.subheader("比分")
+
+    score_col1, score_col2 = st.columns(2)
+
+    with score_col1:
+        st.metric("主隊", st.session_state.score_home)
+
+    with score_col2:
+        st.metric("客隊", st.session_state.score_away)
+
+    st.divider()
+
+    st.subheader("選擇打者")
+
+    batter = st.selectbox("打者", players["姓名"].unique())
+
+    st.subheader("打席結果")
+
+    result = st.selectbox(
+        "選擇結果",
+        ["安打", "全壘打", "四壞", "三振", "滾地出局", "飛球出局"]
+    )
+
+    rbi = st.number_input("打點", 0)
+    run = st.number_input("得分", 0)
+
+    if st.button("紀錄打席"):
+
+        game_data = {
+            "game_id": "game_001",
+            "局數": st.session_state.inning,
+            "半局": st.session_state.half,
+            "打者": batter,
+            "結果": result,
+            "打點": rbi,
+            "得分": run
+        }
+
+        if os.path.exists("games_log.csv"):
+            old = pd.read_csv("games_log.csv")
+            new = pd.concat([old, pd.DataFrame([game_data])])
+        else:
+            new = pd.DataFrame([game_data])
+
+        new.to_csv("games_log.csv", index=False)
+
+        # 更新比分
+        if st.session_state.half == "上":
+            st.session_state.score_away += run
+        else:
+            st.session_state.score_home += run
+
+        st.success("已紀錄")
+
+    st.divider()
+
+    if st.button("🔁 攻守交換"):
+        st.session_state.half = "下" if st.session_state.half == "上" else "上"
+
+    if st.button("🏁 終場比賽"):
+        st.success("比賽結束")

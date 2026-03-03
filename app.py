@@ -273,3 +273,48 @@ elif page == "🏟 比賽紀錄":
     if st.button("🏁 終場比賽"):
         st.success("比賽結束")
 
+elif page == "📊 球員數據庫":
+
+    st.header("📊 球員數據庫")
+
+    if not os.path.exists("players_stats.csv"):
+        st.warning("尚未有球員數據")
+        st.stop()
+
+    stats = pd.read_csv("players_stats.csv")
+
+    # 左側選擇球員
+    player_name = st.sidebar.selectbox(
+        "選擇球員",
+        stats["姓名"].unique()
+    )
+
+    player = stats[stats["姓名"] == player_name].iloc[0]
+
+    AB = player["打數"]
+    H = player["安打"]
+    HR = player["全壘打"]
+    BB = player["四壞"]
+
+    AVG = round(H/AB,3) if AB>0 else 0
+    SLG = round((H + HR*3)/AB,3) if AB>0 else 0
+    OBP = round((H+BB)/(AB+BB),3) if (AB+BB)>0 else 0
+    OPS = round(OBP + SLG,3)
+
+    col1,col2,col3 = st.columns(3)
+
+    col1.metric("打數", AB)
+    col2.metric("安打", H)
+    col3.metric("全壘打", HR)
+
+    col4,col5,col6 = st.columns(3)
+
+    col4.metric("四壞", BB)
+    col5.metric("打擊率 AVG", AVG)
+    col6.metric("OPS", OPS)
+
+    st.divider()
+
+    st.subheader("完整原始數據")
+
+    st.dataframe(stats, use_container_width=True)

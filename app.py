@@ -1,169 +1,248 @@
 import streamlit as st
-from google.cloud import vision
-from PIL import Image
 import pandas as pd
-import io
-import re
-import uuid
-import os
 
-
-TEAM_FILE="team_players.csv"
-
-
-st.title("📸 名冊拍照匯入球員")
-
-
-# ========= 上傳 =========
-
-tab1,tab2=st.tabs(["📸 拍照","📂 上傳"])
-
-
-image=None
-
-with tab1:
-
-    image=st.camera_input("拍攝紙本名冊")
-
-
-with tab2:
-
-    upload=st.file_uploader("上傳圖片",type=["jpg","png","jpeg"])
-
-    if upload:
-
-        image=upload
-
-
-
-# ========= OCR =========
-
-def ocr_text(img):
-
-    client=vision.ImageAnnotatorClient()
-
-    content=img.read()
-
-    image=vision.Image(content=content)
-
-    response=client.text_detection(image=image)
-
-    texts=response.text_annotations
-
-    if not texts:
-
-        return ""
-
-    return texts[0].description
-
-
-
-# ========= 辨識 =========
-
-if image:
-
-    st.image(image,width=400)
-
-    if st.button("開始辨識"):
-
-        with st.spinner("OCR 辨識中..."):
-
-            text=ocr_text(image)
-
-        st.session_state["ocr_raw"]=text
-
-
-
-# ========= 解析 =========
-
-if "ocr_raw" in st.session_state:
-
-    st.subheader("OCR文字")
-
-    st.text_area(
-
-    "辨識結果",
-
-    st.session_state["ocr_raw"],
-
-    height=200
-
-    )
-
-
-    raw=st.session_state["ocr_raw"]
-
-
-    # ⭐ 背號 姓名
-
-    pattern=r"(\d{1,3})\s*([一-龥]{2,4})"
-
-
-    matches=re.findall(pattern,raw)
-
-
-    if matches:
-
-        st.success(f"辨識到 {len(matches)} 位球員")
-
-
-        data=[]
-
-        for num,name in matches:
-
-            data.append({
-
-            "player_id":str(uuid.uuid4()),
-
-            "背號":int(num),
-
-            "姓名":name
-
-            })
-
-
-        df=pd.DataFrame(data)
-
-
-        st.subheader("確認球員")
-
-        edited=st.data_editor(
-
-        df,
-
-        num_rows="dynamic",
-
-        use_container_width=True
-
-        )
-
-
-        # ========= 匯入 =========
-
-        if st.button("✅ 匯入球員"):
-
-            if os.path.exists(TEAM_FILE):
-
-                old=pd.read_csv(TEAM_FILE)
-
-                new=pd.concat([old,edited])
-
-            else:
-
-                new=edited
-
-
-            new.to_csv(TEAM_FILE,index=False)
-
-
-            st.success("匯入完成")
-
-            st.balloons()
-
-            del st.session_state["ocr_raw"]
-
-            st.rerun()
-
-    else:
-
-        st.error("沒有辨識到背號與姓名")
+st.set_page_config(layout="wide")
+
+st.title("📖 中華職棒紀錄符號一覽")
+
+# ===============================
+# ① 守備位置符號
+# ===============================
+
+st.header("① 守備位置符號")
+
+df1 = pd.DataFrame({
+    "符號":[1,2,3,4,5,6,7,8,9,"1–9"],
+    "說明":[
+        "投手（Pitcher）",
+        "捕手（Catcher）",
+        "一壘手（First baseman）",
+        "二壘手（Second baseman）",
+        "三壘手（Third baseman）",
+        "游擊手（Shortstop）",
+        "左外野手（Left fielder）",
+        "中外野手（Center fielder）",
+        "右外野手（Right fielder）",
+        "擊球員棒次"
+    ]
+})
+
+st.table(df1)
+
+# ===============================
+# ② 球數欄內使用之符號
+# ===============================
+
+st.header("② 球數欄內使用之符號")
+
+df2 = pd.DataFrame({
+    "符號":[
+        "○","⊖","－","◎","△","△(上)",
+        "△(左)","△(右)","▲","—","•",">"
+    ],
+    "說明":[
+        "沒有揮棒好球",
+        "揮棒落空好球",
+        "壞球",
+        "揮擊漏空",
+        "界外球",
+        "本壘後方界外球",
+        "左方向界外球",
+        "右方向界外球",
+        "擦棒被捕",
+        "觸擊球",
+        "擊出球方向小點",
+        "兩好球後再用"
+    ]
+})
+
+st.table(df2)
+
+# ===============================
+# ③ 中央菱形格子內之符號
+# ===============================
+
+st.header("③ 中央菱形格子內之符號")
+
+df3 = pd.DataFrame({
+    "符號":["I","II","III","○","◎","ℓ"],
+    "說明":[
+        "第一出局",
+        "第二出局",
+        "第三出局",
+        "投手失分",
+        "投手自責分",
+        "殘壘"
+    ]
+})
+
+st.table(df3)
+
+# ===============================
+# ④ 擊出球性質符號
+# ===============================
+
+st.header("④ 擊出球性質符號")
+
+df4 = pd.DataFrame({
+    "符號":["︶","︿","－"],
+    "說明":[
+        "滾地球",
+        "高飛球",
+        "平飛球"
+    ]
+})
+
+st.table(df4)
+
+# ===============================
+# ⑤ 擊球員上壘之符號
+# ===============================
+
+st.header("⑤ 擊球員上壘之符號")
+
+df5 = pd.DataFrame({
+    "符號":[
+        "／","＞","∧","◇","◇◇",
+        "（內野標記）","／4G","B","B′","D",
+        "SFC4","K＋WP","ES","E9",
+        "5E–3","6E–3","2IF"
+    ],
+    "說明":[
+        "一壘安打",
+        "二壘安打",
+        "三壘安打",
+        "全壘打",
+        "場內全壘打",
+        "內野安打",
+        "滾地安打",
+        "四壞球",
+        "故意四壞球",
+        "觸身球",
+        "野手選擇",
+        "不死三振上壘",
+        "失誤",
+        "失誤（外野）",
+        "失誤暴傳過高",
+        "失誤暴傳過低",
+        "妨礙打擊"
+    ]
+})
+
+st.table(df5)
+
+# ===============================
+# ⑥ 擊球員出局之符號
+# ===============================
+
+st.header("⑥ 擊球員出局之符號")
+
+df6 = pd.DataFrame({
+    "符號":[
+        "K","K¹","K₂","5-3","3A",
+        "5T","6T","4T",
+        "F7","F8","F9",
+        "IF","SF"
+    ],
+    "說明":[
+        "三振",
+        "第三好球捕逸失敗",
+        "捕手傳一壘刺殺",
+        "滾地球刺殺",
+        "野手接球自踩壘包",
+        "觸殺",
+        "觸殺",
+        "觸殺",
+        "高飛球接殺",
+        "高飛球接殺",
+        "高飛球接殺",
+        "內野高飛規則",
+        "犧牲飛球"
+    ]
+})
+
+st.table(df6)
+
+# ===============================
+# ⑦ 跑壘員進壘之符號
+# ===============================
+
+st.header("⑦ 跑壘員進壘之符號")
+
+df7 = pd.DataFrame({
+    "符號":[
+        "↑","←","↓","→",
+        "S","DS","TS",
+        "WP","BK","PB",
+        "8–2","①","(5)","OB"
+    ],
+    "說明":[
+        "進壘方向",
+        "進壘方向",
+        "進壘方向",
+        "進壘方向",
+        "盜壘",
+        "雙盜壘",
+        "三盜壘",
+        "暴投",
+        "投手犯規",
+        "捕逸",
+        "延遲處理",
+        "有打點得分",
+        "無打點得分",
+        "妨礙跑壘"
+    ]
+})
+
+st.table(df7)
+
+# ===============================
+# ⑧ 跑壘員出局之符號
+# ===============================
+
+st.header("⑧ 跑壘員出局之符號")
+
+df8 = pd.DataFrame({
+    "符號":[
+        "6–4","6–3","5T",
+        "5LO2","△4",
+        "6-5","IF6",
+        "DP","TP"
+    ],
+    "說明":[
+        "封殺",
+        "封殺",
+        "觸殺",
+        "內野飛球出局",
+        "滾地出局",
+        "夾殺",
+        "夾殺",
+        "雙殺",
+        "三殺"
+    ]
+})
+
+st.table(df8)
+
+# ===============================
+# ⑨ 其他
+# ===============================
+
+st.header("⑨ 其他")
+
+df9 = pd.DataFrame({
+    "符號":[
+        "｜","PH","PR","DH",
+        "／／","／／／"
+    ],
+    "說明":[
+        "更換球員",
+        "代打",
+        "代跑",
+        "指定打擊",
+        "半局結束",
+        "未完成三出局比賽結束"
+    ]
+})
+
+st.table(df9)

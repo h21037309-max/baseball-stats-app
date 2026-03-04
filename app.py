@@ -329,59 +329,48 @@ elif page == "🖨️ 整張紀錄表":
     if "selected_inning" not in st.session_state:
         st.session_state.selected_inning = 1
 
-    # ========================
+    # =========================
     # 全表模式
-    # ========================
+    # =========================
     if st.session_state.view_mode == "全表":
 
         st.header("🖨️ 棒球整張紀錄表")
 
-        # ---- 局數列（可點擊）----
-        cols = st.columns(innings)
+        # ---------- 局數列 ----------
+        cols = st.columns(innings + 1)
+
+        cols[0].markdown("**棒次**")
 
         for i in range(innings):
-            if cols[i].button(
+            if cols[i+1].button(
                 str(i+1),
-                key=f"inning_{i}",
+                key=f"inning_btn_{i}",
                 use_container_width=True
             ):
                 st.session_state.selected_inning = i+1
                 st.session_state.view_mode = "單局"
+                st.rerun()
 
-        st.divider()
+        # ---------- 1-9棒 ----------
+        for order in range(1, 10):
 
-        # ---- 表格主體 ----
-        html = "<table style='border-collapse:collapse;width:100%;'>"
+            row_cols = st.columns(innings + 1)
 
-        # 棒次列
-        html += "<tr>"
-        html += "<td style='border:1px solid black;width:60px;'>棒次</td>"
-        for i in range(innings):
-            html += "<td style='border:1px solid black;height:35px;'></td>"
-        html += "</tr>"
+            row_cols[0].markdown(f"**{order}**")
 
-        # 1-9棒
-        for order in range(1,10):
-            html += "<tr>"
-            html += f"<td style='border:1px solid black;'>{order}</td>"
             for i in range(innings):
-                html += "<td style='border:1px solid black;height:35px;'></td>"
-            html += "</tr>"
+                row_cols[i+1].write("□")
 
-        # P 行
-        html += "<tr>"
-        html += "<td style='border:1px solid black;'>P</td>"
+        # ---------- P 行 ----------
+        p_cols = st.columns(innings + 1)
+        p_cols[0].markdown("**P**")
+
         for i in range(innings):
-            html += "<td style='border:1px solid black;'></td>"
-        html += "</tr>"
+            p_cols[i+1].write("□")
 
-        html += "</table>"
-
-        st.markdown(html, unsafe_allow_html=True)
-
-    # ========================
+    # =========================
     # 單局模式
-    # ========================
+    # =========================
     else:
 
         inning = st.session_state.selected_inning
@@ -390,6 +379,7 @@ elif page == "🖨️ 整張紀錄表":
 
         if st.button("⬅ 返回整張表"):
             st.session_state.view_mode = "全表"
+            st.rerun()
 
         st.divider()
 

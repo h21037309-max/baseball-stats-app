@@ -321,76 +321,32 @@ elif page == "📊 球員數據庫":
 
 elif page == "🖨️ 整張紀錄表":
 
+    st.header("🖨️ 棒球完整紀錄表")
+
     innings = 12
 
-    if "view_mode" not in st.session_state:
-        st.session_state.view_mode = "全表"
+    # 建立表格資料
+    rows = []
 
-    if "selected_inning" not in st.session_state:
-        st.session_state.selected_inning = 1
+    # 第一列（局數）
+    header = ["棒次"]
+    for i in range(1, innings+1):
+        header.append(str(i))
+    rows.append(header)
 
-    # =========================
-    # 全表模式
-    # =========================
-    if st.session_state.view_mode == "全表":
-
-        st.header("🖨️ 棒球整張紀錄表")
-
-        # ---------- 局數列 ----------
-        cols = st.columns(innings + 1)
-
-        cols[0].markdown("**棒次**")
-
+    # 1–9棒
+    for order in range(1,10):
+        row = [str(order)]
         for i in range(innings):
-            if cols[i+1].button(
-                str(i+1),
-                key=f"inning_btn_{i}",
-                use_container_width=True
-            ):
-                st.session_state.selected_inning = i+1
-                st.session_state.view_mode = "單局"
-                st.rerun()
+            row.append("")
+        rows.append(row)
 
-        # ---------- 1-9棒 ----------
-        for order in range(1, 10):
+    # 投手列（P）
+    p_row = ["P"]
+    for i in range(innings):
+        p_row.append("")
+    rows.append(p_row)
 
-            row_cols = st.columns(innings + 1)
+    df = pd.DataFrame(rows)
 
-            row_cols[0].markdown(f"**{order}**")
-
-            for i in range(innings):
-                row_cols[i+1].write("□")
-
-        # ---------- P 行 ----------
-        p_cols = st.columns(innings + 1)
-        p_cols[0].markdown("**P**")
-
-        for i in range(innings):
-            p_cols[i+1].write("□")
-
-    # =========================
-    # 單局模式
-    # =========================
-    else:
-
-        inning = st.session_state.selected_inning
-
-        st.header(f"第 {inning} 局")
-
-        if st.button("⬅ 返回整張表"):
-            st.session_state.view_mode = "全表"
-            st.rerun()
-
-        st.divider()
-
-        col1, col2 = st.columns([1,3])
-
-        with col1:
-            st.subheader("先發名單")
-            for i in range(1,10):
-                st.write(f"{i}  #__  姓名")
-
-        with col2:
-            st.subheader("本局打席")
-            for i in range(1,10):
-                st.write(f"{i}棒  □ □ □")
+    st.dataframe(df, use_container_width=True, height=600)

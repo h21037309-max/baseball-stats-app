@@ -323,9 +323,29 @@ elif page == "🖨️ 整張紀錄表":
 
     st.header("🖨️ 棒球整張紀錄表")
 
-    def generate_scorecard():
-        innings = 12
+    innings = 12
 
+    # ===============================
+    # 局數選擇按鈕列
+    # ===============================
+
+    st.subheader("選擇局數")
+
+    cols = st.columns(innings)
+
+    for i in range(innings):
+        with cols[i]:
+            if st.button(f"{i+1}局", key=f"inning_{i}"):
+                st.session_state.selected_inning = i+1
+                st.session_state.page_mode = "單局"
+
+    st.divider()
+
+    # ===============================
+    # 顯示整張表
+    # ===============================
+
+    def generate_scorecard():
         html = """
         <style>
         .scorecard {
@@ -334,29 +354,18 @@ elif page == "🖨️ 整張紀錄表":
             table-layout: fixed;
             font-size: 10px;
         }
-
         .scorecard td {
             border: 1px solid black;
             height: 40px;
             text-align: center;
-            vertical-align: middle;
         }
-
-        .header-row td {
-            height: 30px;
-            font-weight: bold;
-            background-color: #f2f2f2;
-        }
-
         .player-col {
-            width: 120px;
+            width: 80px;
             font-weight: bold;
         }
-
         .inning-cell {
             width: 45px;
         }
-
         .diamond {
             width: 20px;
             height: 20px;
@@ -364,13 +373,11 @@ elif page == "🖨️ 整張紀錄表":
             transform: rotate(45deg);
             margin: auto;
         }
-
         </style>
-
         <table class="scorecard">
         """
 
-        html += "<tr class='header-row'>"
+        html += "<tr>"
         html += "<td class='player-col'>棒次</td>"
 
         for i in range(1, innings+1):
@@ -381,17 +388,9 @@ elif page == "🖨️ 整張紀錄表":
         for order in range(1, 10):
             html += "<tr>"
             html += f"<td class='player-col'>{order}</td>"
-
             for i in range(innings):
-                html += "<td class='inning-cell'><div class='diamond'></div></td>"
-
+                html += "<td><div class='diamond'></div></td>"
             html += "</tr>"
-
-        html += "<tr class='header-row'>"
-        html += "<td>P</td>"
-        for i in range(innings):
-            html += "<td></td>"
-        html += "</tr>"
 
         html += "</table>"
 
@@ -399,3 +398,26 @@ elif page == "🖨️ 整張紀錄表":
 
     st.markdown(generate_scorecard(), unsafe_allow_html=True)
 
+if st.session_state.get("page_mode") == "單局":
+
+    st.header(f"第 {st.session_state.selected_inning} 局")
+
+    if st.button("⬅ 返回整張表"):
+        st.session_state.page_mode = None
+        st.rerun()
+
+    st.divider()
+
+    # 左側名單
+    col1, col2 = st.columns([1, 3])
+
+    with col1:
+        st.subheader("先發名單")
+        for i in range(1,10):
+            st.write(f"{i}  #__  姓名")
+
+    with col2:
+        st.subheader("本局打席")
+
+        for i in range(1,10):
+            st.write(f"{i}棒  □ □ □")

@@ -388,7 +388,7 @@ elif page == "🖨️ 整張紀錄表":
             html += "</tr>"
 
         html += "<tr class='header-row'>"
-        html += "<td>R</td>"
+        html += "<td>P</td>"
         for i in range(innings):
             html += "<td></td>"
         html += "</tr>"
@@ -398,3 +398,4 @@ elif page == "🖨️ 整張紀錄表":
         return html
 
     st.markdown(generate_scorecard(), unsafe_allow_html=True)
+

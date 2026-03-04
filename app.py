@@ -1,3 +1,16 @@
+PLAYERS_FILE = "players_master.csv"
+
+if not os.path.exists(PLAYERS_FILE):
+    pd.DataFrame(columns=[
+        "player_id",
+        "球隊",
+        "背號",
+        "姓名",
+        "AB",
+        "H",
+        "RBI",
+        "BB"
+    ]).to_csv(PLAYERS_FILE, index=False)
 import streamlit as st
 import pandas as pd
 import uuid
@@ -333,3 +346,4 @@ elif page == "🖨️ 整張紀錄表":
     cropped = image.crop((0, 0, width, int(height * 0.9)))
 
     st.image(cropped, use_container_width=True)
+

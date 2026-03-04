@@ -330,19 +330,25 @@ elif page == "📊 球員數據庫":
 
     st.dataframe(stats, use_container_width=True)
 
-elif page == "🖨️ 整張紀錄表":
+# ==============================
+# 📄 整張紀錄表
+# ==============================
 
-    st.header("🖨️ 棒球完整紀錄表")
+if page == "📄 整張紀錄表":
 
-    from PIL import Image
+    st.header("📄 比賽完整紀錄表")
 
-    image = Image.open("scorecard.png")  # ← 換成你的圖片檔名
+    IMAGE_PATH = "scorecard.png"  # ← 你的圖片名稱
 
-    width, height = image.size
+    if os.path.exists(IMAGE_PATH):
 
-    # 裁掉右下角 20% 區域（去掉logo）
-    cropped = image.crop((0, 0, width, int(height * 0.9)))
+        image = Image.open(IMAGE_PATH)
 
-    st.image(cropped, use_container_width=True)
+        st.image(
+            image,
+            use_container_width=True
+        )
 
+    else:
 
+        st.error("找不到圖片檔案，請確認 scorecard.png 是否已上傳到 GitHub 根目錄")

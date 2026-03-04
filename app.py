@@ -321,106 +321,68 @@ elif page == "📊 球員數據庫":
 
 elif page == "🖨️ 整張紀錄表":
 
-    st.header("🖨️ 棒球整張紀錄表")
-
     innings = 12
-
-    # ============================
-    # 初始化狀態
-    # ============================
 
     if "view_mode" not in st.session_state:
         st.session_state.view_mode = "全表"
 
-    # ============================
-    # 如果是全表模式
-    # ============================
+    if "selected_inning" not in st.session_state:
+        st.session_state.selected_inning = 1
 
+    # ========================
+    # 全表模式
+    # ========================
     if st.session_state.view_mode == "全表":
 
-        st.subheader("選擇局數")
+        st.header("🖨️ 棒球整張紀錄表")
 
+        # ---- 局數列（可點擊）----
         cols = st.columns(innings)
 
         for i in range(innings):
-            with cols[i]:
-                if st.button(str(i+1), key=f"inning_btn_{i}"):
-                    st.session_state.selected_inning = i+1
-                    st.session_state.view_mode = "單局"
-                    st.rerun()
+            if cols[i].button(
+                str(i+1),
+                key=f"inning_{i}",
+                use_container_width=True
+            ):
+                st.session_state.selected_inning = i+1
+                st.session_state.view_mode = "單局"
 
         st.divider()
 
-        # ============================
-        # 顯示整張紀錄表
-        # ============================
+        # ---- 表格主體 ----
+        html = "<table style='border-collapse:collapse;width:100%;'>"
 
-        def generate_scorecard():
-            html = """
-            <style>
-            .scorecard {
-                border-collapse: collapse;
-                width: 100%;
-                table-layout: fixed;
-                font-size: 10px;
-            }
-            .scorecard td {
-                border: 1px solid black;
-                height: 40px;
-                text-align: center;
-            }
-            .player-col {
-                width: 80px;
-                font-weight: bold;
-            }
-            .inning-cell {
-                width: 45px;
-            }
-            .diamond {
-                width: 20px;
-                height: 20px;
-                border: 1px dashed gray;
-                transform: rotate(45deg);
-                margin: auto;
-            }
-            </style>
-            <table class="scorecard">
-            """
+        # 棒次列
+        html += "<tr>"
+        html += "<td style='border:1px solid black;width:60px;'>棒次</td>"
+        for i in range(innings):
+            html += "<td style='border:1px solid black;height:35px;'></td>"
+        html += "</tr>"
 
+        # 1-9棒
+        for order in range(1,10):
             html += "<tr>"
-            html += "<td class='player-col'>棒次</td>"
-
-            for i in range(1, innings+1):
-                html += f"<td class='inning-cell'>{i}</td>"
-
-            html += "</tr>"
-
-            for order in range(1, 10):
-                html += "<tr>"
-                html += f"<td class='player-col'>{order}</td>"
-
-                for i in range(innings):
-                    html += "<td><div class='diamond'></div></td>"
-
-                html += "</tr>"
-
-            html += "<tr>"
-            html += "<td>P</td>"
+            html += f"<td style='border:1px solid black;'>{order}</td>"
             for i in range(innings):
-                html += "<td></td>"
+                html += "<td style='border:1px solid black;height:35px;'></td>"
             html += "</tr>"
 
-            html += "</table>"
+        # P 行
+        html += "<tr>"
+        html += "<td style='border:1px solid black;'>P</td>"
+        for i in range(innings):
+            html += "<td style='border:1px solid black;'></td>"
+        html += "</tr>"
 
-            return html
+        html += "</table>"
 
-        st.markdown(generate_scorecard(), unsafe_allow_html=True)
+        st.markdown(html, unsafe_allow_html=True)
 
-    # ============================
+    # ========================
     # 單局模式
-    # ============================
-
-    elif st.session_state.view_mode == "單局":
+    # ========================
+    else:
 
         inning = st.session_state.selected_inning
 
@@ -428,21 +390,17 @@ elif page == "🖨️ 整張紀錄表":
 
         if st.button("⬅ 返回整張表"):
             st.session_state.view_mode = "全表"
-            st.rerun()
 
         st.divider()
 
-        col1, col2 = st.columns([1, 3])
+        col1, col2 = st.columns([1,3])
 
-        # 左側先發名單（暫時固定示範）
         with col1:
             st.subheader("先發名單")
-            for i in range(1, 10):
+            for i in range(1,10):
                 st.write(f"{i}  #__  姓名")
 
-        # 右側本局格子
         with col2:
             st.subheader("本局打席")
-
-            for i in range(1, 10):
+            for i in range(1,10):
                 st.write(f"{i}棒  □ □ □")

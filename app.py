@@ -16,7 +16,7 @@ st.title("⚾ 棒球紀錄系統")
 page = st.sidebar.radio(
     "功能選單",
     ["📖 紀錄符號一覽", "📝 建立比賽 / 登記球員",
-     "🏟 比賽紀錄","📊 球員數據庫"]
+     "🏟 比賽紀錄","🖨️ 整張紀錄表","📊 球員數據庫"]
 )
 
 # =========================================================
@@ -318,3 +318,83 @@ elif page == "📊 球員數據庫":
     st.subheader("完整原始數據")
 
     st.dataframe(stats, use_container_width=True)
+
+elif page == "🖨️ 整張紀錄表":
+
+    st.header("🖨️ 棒球整張紀錄表")
+
+    def generate_scorecard():
+        innings = 12
+
+        html = """
+        <style>
+        .scorecard {
+            border-collapse: collapse;
+            width: 100%;
+            table-layout: fixed;
+            font-size: 10px;
+        }
+
+        .scorecard td {
+            border: 1px solid black;
+            height: 40px;
+            text-align: center;
+            vertical-align: middle;
+        }
+
+        .header-row td {
+            height: 30px;
+            font-weight: bold;
+            background-color: #f2f2f2;
+        }
+
+        .player-col {
+            width: 120px;
+            font-weight: bold;
+        }
+
+        .inning-cell {
+            width: 45px;
+        }
+
+        .diamond {
+            width: 20px;
+            height: 20px;
+            border: 1px dashed gray;
+            transform: rotate(45deg);
+            margin: auto;
+        }
+
+        </style>
+
+        <table class="scorecard">
+        """
+
+        html += "<tr class='header-row'>"
+        html += "<td class='player-col'>棒次</td>"
+
+        for i in range(1, innings+1):
+            html += f"<td class='inning-cell'>{i}</td>"
+
+        html += "</tr>"
+
+        for order in range(1, 10):
+            html += "<tr>"
+            html += f"<td class='player-col'>{order}</td>"
+
+            for i in range(innings):
+                html += "<td class='inning-cell'><div class='diamond'></div></td>"
+
+            html += "</tr>"
+
+        html += "<tr class='header-row'>"
+        html += "<td>R</td>"
+        for i in range(innings):
+            html += "<td></td>"
+        html += "</tr>"
+
+        html += "</table>"
+
+        return html
+
+    st.markdown(generate_scorecard(), unsafe_allow_html=True)

@@ -335,22 +335,19 @@ elif page == "📊 球員數據庫":
 # 📄 整張紀錄表
 # ==============================
 
-if page == "📄 整張紀錄表":
+elif page == "🖨️ 整張紀錄表":
 
     st.header("📄 比賽完整紀錄表")
 
-    IMAGE_PATH = "scorecard.png"
+    IMAGE_PATH = "scorecard.png"  # 確認檔名完全一致
 
-    if os.path.exists(IMAGE_PATH):
-
-        image = Image.open(IMAGE_PATH)
-
-        st.image(
-            image,
-            use_container_width=True
-        )
-
+    if not os.path.exists(IMAGE_PATH):
+        st.error("❌ 找不到 scorecard.png，請確認圖片已上傳到 GitHub 根目錄")
     else:
+        try:
+            image = Image.open(IMAGE_PATH)
+            st.image(image, use_container_width=True)
+        except Exception as e:
+            st.error(f"圖片讀取失敗：{e}")
 
-        st.error("找不到圖片檔案")
 

@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import uuid
 import os
+from PIL import Image
 
 PLAYERS_FILE = "players_master.csv"
 if not os.path.exists(PLAYERS_FILE):
@@ -338,7 +339,7 @@ if page == "📄 整張紀錄表":
 
     st.header("📄 比賽完整紀錄表")
 
-    IMAGE_PATH = "scorecard.png"  # ← 你的圖片名稱
+    IMAGE_PATH = "scorecard.png"
 
     if os.path.exists(IMAGE_PATH):
 
@@ -351,4 +352,5 @@ if page == "📄 整張紀錄表":
 
     else:
 
-        st.error("找不到圖片檔案，請確認 scorecard.png 是否已上傳到 GitHub 根目錄")
+        st.error("找不到圖片檔案")
+

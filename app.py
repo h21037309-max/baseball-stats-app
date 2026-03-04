@@ -323,30 +323,13 @@ elif page == "🖨️ 整張紀錄表":
 
     st.header("🖨️ 棒球完整紀錄表")
 
-    innings = 12
+    from PIL import Image
 
-    # 建立表格資料
-    rows = []
+    image = Image.open("scorecard.png")  # ← 換成你的圖片檔名
 
-    # 第一列（局數）
-    header = ["棒次"]
-    for i in range(1, innings+1):
-        header.append(str(i))
-    rows.append(header)
+    width, height = image.size
 
-    # 1–9棒
-    for order in range(1,10):
-        row = [str(order)]
-        for i in range(innings):
-            row.append("")
-        rows.append(row)
+    # 裁掉右下角 20% 區域（去掉logo）
+    cropped = image.crop((0, 0, width, int(height * 0.9)))
 
-    # 投手列（P）
-    p_row = ["P"]
-    for i in range(innings):
-        p_row.append("")
-    rows.append(p_row)
-
-    df = pd.DataFrame(rows)
-
-    st.dataframe(df, use_container_width=True, height=600)
+    st.image(cropped, use_container_width=True)

@@ -335,20 +335,111 @@ elif page == "📊 球員數據庫":
 # 📄 整張紀錄表
 # ==============================
 
-elif page == "🖨️ 整張紀錄表":
+elif page == "🏟 比賽紀錄":
 
-    st.header("📄 比賽完整紀錄表")
+    st.header("🏟 比賽紀錄")
 
-    IMAGE_PATH = "scorecard.png.jpg"  # 確認檔名完全一致
+    innings = 9
+    batters = 9
 
-    if not os.path.exists(IMAGE_PATH):
-        st.error("❌ 找不到 scorecard.png.jpg，請確認圖片已上傳到 GitHub 根目錄")
-    else:
-        try:
-            image = Image.open(IMAGE_PATH)
-            st.image(image, use_container_width=True)
-        except Exception as e:
-            st.error(f"圖片讀取失敗：{e}")
+    if "scorecard" not in st.session_state:
+        st.session_state.scorecard = {}
 
+    if "selected_cell" not in st.session_state:
+        st.session_state.selected_cell = None
 
+    left, right = st.columns([3,1])
 
+    # =====================
+    # 左側紀錄表
+    # =====================
+
+    with left:
+
+        header = st.columns(innings + 1)
+
+        header[0].markdown("棒次")
+
+        for i in range(1,innings+1):
+            header[i].markdown(f"**{i}**")
+
+        for batter in range(1, batters+1):
+
+            row = st.columns(innings + 1)
+
+            row[0].markdown(f"**{batter}**")
+
+            for inning in range(1, innings+1):
+
+                key = f"{inning}_{batter}"
+
+                cell = st.session_state.scorecard.get(key,{})
+
+                pitch = cell.get("pitch","")
+                result = cell.get("result","")
+
+                label = f"{pitch}\n{result}"
+
+                if row[inning].button(label or " ", key=key):
+
+                    st.session_state.selected_cell = key
+
+    # =====================
+    # 右側輸入
+    # =====================
+
+    with right:
+
+        st.subheader("符號輸入")
+
+        if st.session_state.selected_cell is None:
+
+            st.info("請先點擊左側格子")
+
+        else:
+
+            key = st.session_state.selected_cell
+
+            if key not in st.session_state.scorecard:
+                st.session_state.scorecard[key] = {"pitch":"","result":""}
+
+            st.markdown("### 球數")
+
+            col1,col2,col3 = st.columns(3)
+
+            if col1.button("○"):
+                st.session_state.scorecard[key]["pitch"] += "○"
+
+            if col2.button("－"):
+                st.session_state.scorecard[key]["pitch"] += "－"
+
+            if col3.button("△"):
+                st.session_state.scorecard[key]["pitch"] += "△"
+
+            st.markdown("### 打擊結果")
+
+            if st.button("1B"):
+                st.session_state.scorecard[key]["result"] = "1B"
+
+            if st.button("2B"):
+                st.session_state.scorecard[key]["result"] = "2B"
+
+            if st.button("3B"):
+                st.session_state.scorecard[key]["result"] = "3B"
+
+            if st.button("HR"):
+                st.session_state.scorecard[key]["result"] = "HR"
+
+            if st.button("BB"):
+                st.session_state.scorecard[key]["result"] = "BB"
+
+            if st.button("K"):
+                st.session_state.scorecard[key]["result"] = "K"
+
+            st.markdown("### 清除")
+
+            if st.button("清除球數"):
+                st.session_state.scorecard[key]["pitch"] = ""
+
+            if st.button("清除結果"):
+                st.session_state.scorecard[key]["result"] = ""

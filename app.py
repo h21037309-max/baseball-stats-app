@@ -572,4 +572,40 @@ elif page == "🎯 格子紀錄":
 
             if st.button("清除結果"):
                 st.session_state.scorecard[key]["result"] = ""
+elif page == "🎯 格子紀錄":
+
+    st.header("🎯 棒球紀錄表")
+
+    html = """
+    <style>
+    .diamond {
+        width:40px;
+        height:40px;
+        border:1px solid black;
+        transform:rotate(45deg);
+        margin:auto;
+    }
+
+    .row{
+        display:flex;
+        align-items:center;
+        margin:6px;
+    }
+
+    .num{
+        width:30px;
+    }
+    </style>
+    """
+
+    st.markdown(html, unsafe_allow_html=True)
+
+    for i in range(1,10):
+
+        st.markdown(f"""
+        <div class="row">
+            <div class="num">{i}</div>
+            <div class="diamond"></div>
+        </div>
+        """, unsafe_allow_html=True)
 

@@ -450,27 +450,74 @@ elif page == "🏟 比賽紀錄":
 
 elif page == "🎯 格子紀錄":
 
-    st.header("🎯 棒球紀錄表")
+    st.header("🎯 棒球紀錄格")
 
     html = """
     <style>
-    .diamond {
-        width:40px;
-        height:40px;
+
+    .cell{
+        width:80px;
+        height:80px;
         border:1px solid black;
+        position:relative;
+        margin:4px;
+    }
+
+    .diamond{
+        width:30px;
+        height:30px;
+        border:1px dashed green;
         transform:rotate(45deg);
-        margin:auto;
+        position:absolute;
+        top:25px;
+        left:25px;
+    }
+
+    .top{
+        position:absolute;
+        top:2px;
+        left:30px;
+        font-size:12px;
+    }
+
+    .bottom{
+        position:absolute;
+        bottom:2px;
+        left:30px;
+        font-size:12px;
+    }
+
+    .left{
+        position:absolute;
+        left:2px;
+        top:30px;
+        font-size:12px;
+    }
+
+    .right{
+        position:absolute;
+        right:2px;
+        top:30px;
+        font-size:12px;
+    }
+
+    .pitch{
+        position:absolute;
+        left:2px;
+        top:2px;
+        font-size:12px;
+        line-height:12px;
     }
 
     .row{
         display:flex;
         align-items:center;
-        margin:6px;
     }
 
     .num{
-        width:30px;
+        width:25px;
     }
+
     </style>
     """
 
@@ -480,7 +527,24 @@ elif page == "🎯 格子紀錄":
 
         st.markdown(f"""
         <div class="row">
+
             <div class="num">{i}</div>
-            <div class="diamond"></div>
+
+            <div class="cell">
+
+                <div class="pitch">○ △</div>
+
+                <div class="top">SB</div>
+
+                <div class="right">1B</div>
+
+                <div class="left">WP</div>
+
+                <div class="bottom">①</div>
+
+                <div class="diamond"></div>
+
+            </div>
+
         </div>
         """, unsafe_allow_html=True)

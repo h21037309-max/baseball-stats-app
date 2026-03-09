@@ -28,7 +28,7 @@ st.title("⚾ 棒球紀錄系統")
 page = st.sidebar.radio(
     "功能選單",
     ["📖 紀錄符號一覽", "📝 建立比賽 / 登記球員",
-     "🏟 比賽紀錄","🖨️ 整張紀錄表","📊 球員數據庫"]
+     "🏟 比賽紀錄","🎯 格子紀錄","🖨️ 整張紀錄表","📊 球員數據庫"]
 )
 
 # =========================================================
@@ -435,6 +435,135 @@ elif page == "🏟 比賽紀錄":
 
             if st.button("K"):
                 st.session_state.scorecard[key]["result"] = "K"
+
+            st.markdown("### 清除")
+
+            if st.button("清除球數"):
+                st.session_state.scorecard[key]["pitch"] = ""
+
+            if st.button("清除結果"):
+                st.session_state.scorecard[key]["result"] = ""
+
+# =========================================================
+# 🎯 格子紀錄模式（棒球紀錄表）
+# =========================================================
+
+elif page == "🎯 格子紀錄":
+
+    st.header("🎯 棒球紀錄格")
+
+    innings = 9
+    batters = 9
+
+    if "scorecard" not in st.session_state:
+        st.session_state.scorecard = {}
+
+    if "selected_cell" not in st.session_state:
+        st.session_state.selected_cell = None
+
+    left, right = st.columns([3,1])
+
+    # ======================
+    # 左側紀錄表
+    # ======================
+
+    with left:
+
+        header = st.columns(innings + 1)
+
+        header[0].markdown("棒次")
+
+        for i in range(1, innings+1):
+            header[i].markdown(f"**{i}**")
+
+        for batter in range(1, batters+1):
+
+            row = st.columns(innings + 1)
+
+            row[0].markdown(f"**{batter}**")
+
+            for inning in range(1, innings+1):
+
+                key = f"{inning}_{batter}"
+
+                cell = st.session_state.scorecard.get(key, {
+                    "pitch":"",
+                    "result":"",
+                    "runner":"",
+                    "out":""
+                })
+
+                label = f"{cell['pitch']}\n{cell['result']}"
+
+                if row[inning].button(label or " ", key=key):
+                    st.session_state.selected_cell = key
+
+    # ======================
+    # 右側輸入面板
+    # ======================
+
+    with right:
+
+        st.subheader("符號輸入")
+
+        if st.session_state.selected_cell is None:
+
+            st.info("請先點擊左側格子")
+
+        else:
+
+            key = st.session_state.selected_cell
+
+            if key not in st.session_state.scorecard:
+                st.session_state.scorecard[key] = {
+                    "pitch":"",
+                    "result":"",
+                    "runner":"",
+                    "out":""
+                }
+
+            st.markdown("### 球數")
+
+            c1,c2,c3 = st.columns(3)
+
+            if c1.button("○"):
+                st.session_state.scorecard[key]["pitch"] += "○"
+
+            if c2.button("－"):
+                st.session_state.scorecard[key]["pitch"] += "－"
+
+            if c3.button("△"):
+                st.session_state.scorecard[key]["pitch"] += "△"
+
+            st.markdown("### 打擊結果")
+
+            if st.button("1B"):
+                st.session_state.scorecard[key]["result"] = "1B"
+
+            if st.button("2B"):
+                st.session_state.scorecard[key]["result"] = "2B"
+
+            if st.button("3B"):
+                st.session_state.scorecard[key]["result"] = "3B"
+
+            if st.button("HR"):
+                st.session_state.scorecard[key]["result"] = "HR"
+
+            if st.button("BB"):
+                st.session_state.scorecard[key]["result"] = "BB"
+
+            if st.button("K"):
+                st.session_state.scorecard[key]["result"] = "K"
+
+            st.markdown("### 跑壘")
+
+            if st.button("SB"):
+                st.session_state.scorecard[key]["runner"] = "SB"
+
+            st.markdown("### 出局")
+
+            if st.button("I"):
+                st.session_state.scorecard[key]["out"] = "I"
 
             st.markdown("### 清除")
 

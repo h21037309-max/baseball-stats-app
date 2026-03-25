@@ -1,550 +1,233 @@
 import streamlit as st
 import pandas as pd
+from datetime import datetime
 import uuid
-import os
-from PIL import Image
-
-PLAYERS_FILE = "players_master.csv"
-if not os.path.exists(PLAYERS_FILE):
-    pd.DataFrame(columns=[
-        "player_id",
-        "球隊",
-        "背號",
-        "姓名",
-        "AB",
-        "H",
-        "RBI",
-        "BB"
-    ]).to_csv(PLAYERS_FILE, index=False)
+from supabase import create_client
 
 st.set_page_config(layout="wide")
+st.title("⚾ 打擊數據系統（雲端版）")
 
-st.title("⚾ 棒球紀錄系統")
-
-# ===============================
-# 側邊頁面選單
-# ===============================
-
-page = st.sidebar.radio(
-    "功能選單",
-    ["📖 紀錄符號一覽", "📝 建立比賽 / 登記球員",
-     "🏟 比賽紀錄","🎯 格子紀錄","🖨️ 整張紀錄表","📊 球員數據庫"]
-)
-
-# =========================================================
-# 📖 第一頁：完整中華職棒紀錄符號
-# =========================================================
-
-if page == "📖 紀錄符號一覽":
-
-    st.title("📖 中華職棒紀錄符號一覽")
-
-    # ① 守備位置
-    st.header("① 守備位置符號")
-    st.table(pd.DataFrame({
-        "符號":[1,2,3,4,5,6,7,8,9,"1–9"],
-        "說明":[
-            "投手","捕手","一壘手","二壘手","三壘手",
-            "游擊手","左外野","中外野","右外野","擊球員棒次"
-        ]
-    }))
-
-    # ② 球數
-    st.header("② 球數欄內使用之符號")
-    st.table(pd.DataFrame({
-        "符號":["○","⊖","－","◎","△","△(上)","△(左)","△(右)","▲","—","•",">"],
-        "說明":[
-            "好球(未揮棒)","揮棒落空","壞球","揮擊漏空",
-            "界外球","後方界外","左界外","右界外",
-            "擦棒被捕","觸擊球","方向點","兩好球再觸擊"
-        ]
-    }))
-
-    # ③ 中央菱形
-    st.header("③ 中央菱形格子內之符號")
-    st.table(pd.DataFrame({
-        "符號":["I","II","III","○","◎","ℓ"],
-        "說明":["第一出局","第二出局","第三出局","投手失分","投手自責分","殘壘"]
-    }))
-
-    # ④ 擊出球性質
-    st.header("④ 擊出球性質符號")
-    st.table(pd.DataFrame({
-        "符號":["︶","︿","－"],
-        "說明":["滾地球","高飛球","平飛球"]
-    }))
-
-    # ⑤ 上壘
-    st.header("⑤ 擊球員上壘之符號")
-    st.table(pd.DataFrame({
-        "符號":["／","＞","∧","◇","◇◇","B","B′","D","SFC4","K＋WP","E9"],
-        "說明":[
-            "一壘安打","二壘安打","三壘安打","全壘打",
-            "場內全壘打","四壞球","故意四壞","觸身球",
-            "野手選擇","不死三振上壘","失誤"
-        ]
-    }))
-
-    # ⑥ 擊球員出局
-    st.header("⑥ 擊球員出局之符號")
-    st.table(pd.DataFrame({
-        "符號":["K","K¹","K₂","5-3","3A","5T","F7","IF","SF"],
-        "說明":[
-            "三振","第三好球捕逸","捕手刺殺",
-            "滾地刺殺","自行踩壘","觸殺",
-            "飛球接殺","內野高飛","犧牲飛球"
-        ]
-    }))
-
-    # ⑦ 跑壘進壘
-    st.header("⑦ 跑壘員進壘之符號")
-    st.table(pd.DataFrame({
-        "符號":["S","DS","TS","WP","BK","PB","①","OB"],
-        "說明":["盜壘","雙盜壘","三盜壘","暴投","投手犯規","捕逸","有打點","妨礙跑壘"]
-    }))
-
-    # ⑧ 跑壘出局
-    st.header("⑧ 跑壘員出局之符號")
-    st.table(pd.DataFrame({
-        "符號":["6–4","5T","DP","TP"],
-        "說明":["封殺","觸殺","雙殺","三殺"]
-    }))
-
-    # ⑨ 其他（更換投手反向符號）
-    st.header("⑨ 其他")
-    st.table(pd.DataFrame({
-        "符號":["┌","｜","PH","PR","DH","／／","／／／"],
-        "說明":[
-            "更換投手",
-            "更換打者",
-            "代打",
-            "代跑",
-            "指定打擊",
-            "半局結束",
-            "比賽提前結束"
-        ]
-    }))
+ADMINS=["洪仲平"]
 
-# =========================================================
-# 📝 第二頁：建立比賽
-# =========================================================
+# ======================
+# 🔥 Supabase設定（已幫你放好）
+# ======================
 
-elif page == "📝 建立比賽 / 登記球員":
+SUPABASE_URL = "https://tovsoxvpcfupjnhtdrzz.supabase.co"
+SUPABASE_KEY = "sb_publishable_IFsfZ5zlOtGv8F5eU11kpw_uCHZA93d"
 
-    st.header("📝 建立比賽")
+supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-    col1, col2 = st.columns(2)
+# ======================
+# 讀取資料
+# ======================
 
-    with col1:
-        home_team = st.text_input("主隊名稱")
+user_df = pd.DataFrame(supabase.table("users").select("*").execute().data)
+df = pd.DataFrame(supabase.table("stats").select("*").execute().data)
 
-    with col2:
-        away_team = st.text_input("客隊名稱")
+if not df.empty:
+    df = df.fillna(0)
 
-    st.subheader("主隊球員名單")
-    home_players = st.data_editor(
-        pd.DataFrame(columns=["背號", "姓名"]),
-        num_rows="dynamic",
-        key="home_editor"
-    )
+# ======================
+# 註冊 / 登入
+# ======================
 
-    st.subheader("客隊球員名單")
-    away_players = st.data_editor(
-        pd.DataFrame(columns=["背號", "姓名"]),
-        num_rows="dynamic",
-        key="away_editor"
-    )
+mode=st.sidebar.radio("帳號",["登入","註冊"])
 
-    if st.button("✅ 建立比賽並儲存球員"):
+if mode=="註冊":
 
-        all_players = []
+    st.header("建立帳號")
 
-        for _, row in home_players.iterrows():
-            if pd.notna(row["姓名"]):
-                all_players.append({
-                    "player_id": str(uuid.uuid4()),
-                    "球隊": home_team,
-                    "背號": row["背號"],
-                    "姓名": row["姓名"]
-                })
+    acc=st.text_input("帳號")
+    pw=st.text_input("密碼",type="password")
+    real=st.text_input("姓名")
+    team=st.text_input("球隊")
+    num=st.number_input("背號",0)
 
-        for _, row in away_players.iterrows():
-            if pd.notna(row["姓名"]):
-                all_players.append({
-                    "player_id": str(uuid.uuid4()),
-                    "球隊": away_team,
-                    "背號": row["背號"],
-                    "姓名": row["姓名"]
-                })
+    if st.button("建立帳號"):
 
-        new_df = pd.DataFrame(all_players)
+        supabase.table("users").insert({
+            "帳號":acc,
+            "密碼":pw,
+            "姓名":real,
+            "球隊":team,
+            "背號":int(num)
+        }).execute()
 
-        if os.path.exists(PLAYERS_FILE):
-            old_df = pd.read_csv(PLAYERS_FILE)
-            final_df = pd.concat([old_df, new_df], ignore_index=True)
-        else:
-            final_df = new_df
+        st.success("註冊成功")
+        st.rerun()
 
-        final_df.to_csv(PLAYERS_FILE, index=False)
+    st.stop()
 
-        st.success("比賽建立完成，球員已加入後台資料庫")
-        st.balloons()
+# ======================
+# 登入
+# ======================
 
-elif page == "🏟 比賽紀錄":
+username=st.sidebar.text_input("帳號")
+password=st.sidebar.text_input("密碼",type="password")
 
-    st.header("🏟 比賽紀錄")
+login=user_df[
+(user_df["帳號"]==username)&
+(user_df["密碼"]==password)
+]
 
-    if not os.path.exists(PLAYERS_FILE):
-        st.warning("請先建立比賽並登記球員")
-        st.stop()
+if login.empty:
+    st.warning("請登入")
+    st.stop()
 
-    players = pd.read_csv(PLAYERS_FILE)
+login_name=login.iloc[0]["姓名"]
+team_default=login.iloc[0]["球隊"]
+number_default=int(login.iloc[0]["背號"])
 
-    # 初始化 session
-    if "inning" not in st.session_state:
-        st.session_state.inning = 1
-        st.session_state.half = "上"
-        st.session_state.score_home = 0
-        st.session_state.score_away = 0
+IS_ADMIN=login_name in ADMINS
 
-    col1, col2, col3 = st.columns(3)
+# ======================
+# ADMIN 選球員
+# ======================
 
-    with col1:
-        if st.button("⬅ 上一局"):
-            if st.session_state.inning > 1:
-                st.session_state.inning -= 1
+if IS_ADMIN:
 
-    with col2:
-        st.subheader(f"第 {st.session_state.inning} 局 {st.session_state.half} 半")
+    player_list=user_df["姓名"].tolist()
 
-    with col3:
-        if st.button("下一局 ➡"):
-            st.session_state.inning += 1
+    player_name=st.sidebar.selectbox("選擇球員",player_list)
 
-    st.divider()
+    info=user_df[user_df["姓名"]==player_name].iloc[0]
 
-    st.subheader("比分")
+    team_default=info["球隊"]
+    number_default=int(info["背號"])
 
-    score_col1, score_col2 = st.columns(2)
+else:
+    player_name=login_name
 
-    with score_col1:
-        st.metric("主隊", st.session_state.score_home)
+# ======================
+# 功能選單
+# ======================
 
-    with score_col2:
-        st.metric("客隊", st.session_state.score_away)
+menu=["個人數據","新增紀錄","單場紀錄","聯盟排行榜"]
 
-    st.divider()
+if IS_ADMIN:
+    menu.append("帳號管理")
 
-    st.subheader("選擇打者")
+page=st.sidebar.radio("功能選單",menu)
 
-    batter = st.selectbox("打者", players["姓名"].unique())
+# ======================
+# 個人數據
+# ======================
 
-    st.subheader("打席結果")
+if page=="個人數據":
 
-    result = st.selectbox(
-        "選擇結果",
-        ["安打", "全壘打", "四壞", "三振", "滾地出局", "飛球出局"]
-    )
+    st.header(f"📊 {player_name} 個人數據")
 
-    rbi = st.number_input("打點", 0)
-    run = st.number_input("得分", 0)
+    player_df=df[df["姓名"]==player_name]
 
-    if st.button("紀錄打席"):
+    if player_df.empty:
+        st.info("目前沒有紀錄")
 
-        game_data = {
-            "game_id": "game_001",
-            "局數": st.session_state.inning,
-            "半局": st.session_state.half,
-            "打者": batter,
-            "結果": result,
-            "打點": rbi,
-            "得分": run
-        }
+    else:
 
-        if os.path.exists("games_log.csv"):
-            old = pd.read_csv("games_log.csv")
-            new = pd.concat([old, pd.DataFrame([game_data])])
-        else:
-            new = pd.DataFrame([game_data])
+        total=player_df.sum(numeric_only=True)
 
-        new.to_csv("games_log.csv", index=False)
+        H=(total["single"]+total["double"]+total["triple"]+total["HR"])
+        AB=total["打數"]
 
-        # 更新比分
-        if st.session_state.half == "上":
-            st.session_state.score_away += run
-        else:
-            st.session_state.score_home += run
+        AVG=round(H/AB,3) if AB>0 else 0
 
-        st.success("已紀錄")
+        c1,c2,c3=st.columns(3)
+        c1.metric("打數",int(AB))
+        c2.metric("安打",int(H))
+        c3.metric("AVG",AVG)
 
-    st.divider()
+# ======================
+# 新增紀錄
+# ======================
 
-    if st.button("🔁 攻守交換"):
-        st.session_state.half = "下" if st.session_state.half == "上" else "上"
+if page=="新增紀錄":
 
-    if st.button("🏁 終場比賽"):
-        st.success("比賽結束")
+    st.header(f"新增紀錄（{player_name}）")
 
-elif page == "📊 球員數據庫":
+    game_date=st.date_input("比賽日期",datetime.today())
+    opponent=st.text_input("對戰球隊")
 
-    st.header("📊 球員數據庫")
+    AB=int(st.number_input("打數",0))
+    single=int(st.number_input("1B",0))
+    double=int(st.number_input("2B",0))
+    triple=int(st.number_input("3B",0))
+    HR=int(st.number_input("HR",0))
+    BB=int(st.number_input("BB",0))
+    SF=int(st.number_input("SF",0))
 
-    if not os.path.exists("players_stats.csv"):
-        st.warning("尚未有球員數據")
-        st.stop()
+    if st.button("新增紀錄"):
 
-    stats = pd.read_csv("players_stats.csv")
+        supabase.table("stats").insert({
+            "紀錄ID":str(uuid.uuid4()),
+            "日期":game_date.strftime("%Y-%m-%d"),
+            "球隊":team_default,
+            "背號":number_default,
+            "姓名":player_name,
+            "對戰球隊":opponent,
+            "打數":AB,
+            "single":single,
+            "double":double,
+            "triple":triple,
+            "HR":HR,
+            "BB":BB,
+            "SF":SF
+        }).execute()
 
-    # 左側選擇球員
-    player_name = st.sidebar.selectbox(
-        "選擇球員",
-        stats["姓名"].unique()
-    )
+        st.success("新增成功")
+        st.rerun()
 
-    player = stats[stats["姓名"] == player_name].iloc[0]
+# ======================
+# 單場紀錄
+# ======================
 
-    AB = player["打數"]
-    H = player["安打"]
-    HR = player["全壘打"]
-    BB = player["四壞"]
+if page=="單場紀錄":
 
-    AVG = round(H/AB,3) if AB>0 else 0
-    SLG = round((H + HR*3)/AB,3) if AB>0 else 0
-    OBP = round((H+BB)/(AB+BB),3) if (AB+BB)>0 else 0
-    OPS = round(OBP + SLG,3)
+    st.header("📅 單場紀錄")
 
-    col1,col2,col3 = st.columns(3)
+    player_df=df[df["姓名"]==player_name]
 
-    col1.metric("打數", AB)
-    col2.metric("安打", H)
-    col3.metric("全壘打", HR)
+    for _,row in player_df.iterrows():
 
-    col4,col5,col6 = st.columns(3)
+        st.markdown(f"{row['日期']} vs {row['對戰球隊']}")
 
-    col4.metric("四壞", BB)
-    col5.metric("打擊率 AVG", AVG)
-    col6.metric("OPS", OPS)
+        col1,col2=st.columns(2)
 
-    st.divider()
+        if col1.button("刪除",key=row["紀錄ID"]):
 
-    st.subheader("完整原始數據")
+            supabase.table("stats").delete().eq("紀錄ID",row["紀錄ID"]).execute()
+            st.rerun()
 
-    st.dataframe(stats, use_container_width=True)
+# ======================
+# 聯盟排行榜
+# ======================
 
-# ==============================
-# 📄 整張紀錄表
-# ==============================
+if page=="聯盟排行榜":
 
-elif page == "🏟 比賽紀錄":
+    st.header("🏆 聯盟排行榜")
 
-    st.header("🏟 比賽紀錄")
+    players=df.groupby(["姓名"],as_index=False).sum(numeric_only=True)
 
-    innings = 9
-    batters = 9
+    players["H"]=(players["single"]+players["double"]+players["triple"]+players["HR"])
+    players["AVG"]=(players["H"]/players["打數"]).replace([float("inf")],0).round(3)
 
-    if "scorecard" not in st.session_state:
-        st.session_state.scorecard = {}
+    st.dataframe(players.sort_values("AVG",ascending=False))
 
-    if "selected_cell" not in st.session_state:
-        st.session_state.selected_cell = None
+# ======================
+# 帳號管理
+# ======================
 
-    left, right = st.columns([3,1])
+if page=="帳號管理" and IS_ADMIN:
 
-    # =====================
-    # 左側紀錄表
-    # =====================
+    st.header("帳號管理")
 
-    with left:
+    st.dataframe(user_df)
 
-        header = st.columns(innings + 1)
+    delete_acc=st.selectbox("刪除帳號",user_df["帳號"])
 
-        header[0].markdown("棒次")
+    if st.button("刪除帳號"):
 
-        for i in range(1,innings+1):
-            header[i].markdown(f"**{i}**")
+        supabase.table("users").delete().eq("帳號",delete_acc).execute()
 
-        for batter in range(1, batters+1):
-
-            row = st.columns(innings + 1)
-
-            row[0].markdown(f"**{batter}**")
-
-            for inning in range(1, innings+1):
-
-                key = f"{inning}_{batter}"
-
-                cell = st.session_state.scorecard.get(key,{})
-
-                pitch = cell.get("pitch","")
-                result = cell.get("result","")
-
-                label = f"{pitch}\n{result}"
-
-                if row[inning].button(label or " ", key=key):
-
-                    st.session_state.selected_cell = key
-
-    # =====================
-    # 右側輸入
-    # =====================
-
-    with right:
-
-        st.subheader("符號輸入")
-
-        if st.session_state.selected_cell is None:
-
-            st.info("請先點擊左側格子")
-
-        else:
-
-            key = st.session_state.selected_cell
-
-            if key not in st.session_state.scorecard:
-                st.session_state.scorecard[key] = {"pitch":"","result":""}
-
-            st.markdown("### 球數")
-
-            col1,col2,col3 = st.columns(3)
-
-            if col1.button("○"):
-                st.session_state.scorecard[key]["pitch"] += "○"
-
-            if col2.button("－"):
-                st.session_state.scorecard[key]["pitch"] += "－"
-
-            if col3.button("△"):
-                st.session_state.scorecard[key]["pitch"] += "△"
-
-            st.markdown("### 打擊結果")
-
-            if st.button("1B"):
-                st.session_state.scorecard[key]["result"] = "1B"
-
-            if st.button("2B"):
-                st.session_state.scorecard[key]["result"] = "2B"
-
-            if st.button("3B"):
-                st.session_state.scorecard[key]["result"] = "3B"
-
-            if st.button("HR"):
-                st.session_state.scorecard[key]["result"] = "HR"
-
-            if st.button("BB"):
-                st.session_state.scorecard[key]["result"] = "BB"
-
-            if st.button("K"):
-                st.session_state.scorecard[key]["result"] = "K"
-
-            st.markdown("### 清除")
-
-            if st.button("清除球數"):
-                st.session_state.scorecard[key]["pitch"] = ""
-
-            if st.button("清除結果"):
-                st.session_state.scorecard[key]["result"] = ""
-
-# =========================================================
-# 🎯 格子紀錄模式（棒球紀錄表）
-# =========================================================
-
-elif page == "🎯 格子紀錄":
-
-    st.header("🎯 棒球紀錄格")
-
-    html = """
-    <style>
-
-    .cell{
-        width:80px;
-        height:80px;
-        border:1px solid black;
-        position:relative;
-        margin:4px;
-    }
-
-    .diamond{
-        width:30px;
-        height:30px;
-        border:1px dashed green;
-        transform:rotate(45deg);
-        position:absolute;
-        top:25px;
-        left:25px;
-    }
-
-    .top{
-        position:absolute;
-        top:2px;
-        left:30px;
-        font-size:12px;
-    }
-
-    .bottom{
-        position:absolute;
-        bottom:2px;
-        left:30px;
-        font-size:12px;
-    }
-
-    .left{
-        position:absolute;
-        left:2px;
-        top:30px;
-        font-size:12px;
-    }
-
-    .right{
-        position:absolute;
-        right:2px;
-        top:30px;
-        font-size:12px;
-    }
-
-    .pitch{
-        position:absolute;
-        left:2px;
-        top:2px;
-        font-size:12px;
-        line-height:12px;
-    }
-
-    .row{
-        display:flex;
-        align-items:center;
-    }
-
-    .num{
-        width:25px;
-    }
-
-    </style>
-    """
-
-    st.markdown(html, unsafe_allow_html=True)
-
-    for i in range(1,10):
-
-        st.markdown(f"""
-        <div class="row">
-
-            <div class="num">{i}</div>
-
-            <div class="cell">
-
-                <div class="pitch">○ △</div>
-
-                <div class="top">SB</div>
-
-                <div class="right">1B</div>
-
-                <div class="left">WP</div>
-
-                <div class="bottom">①</div>
-
-                <div class="diamond"></div>
-
-            </div>
-
-        </div>
-        """, unsafe_allow_html=True)
+        st.success("刪除成功")
+        st.rerun()
